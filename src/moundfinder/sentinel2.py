@@ -166,7 +166,9 @@ class SceneIndex:
 
 def pick_scenes(scenes: list[dict], max_cloud: float, n: int) -> list[dict]:
     ok = [s for s in scenes if s["cloud"] <= max_cloud and s["nodata_pct"] < 40]
-    return sorted(ok, key=lambda s: s["cloud"])[:n]
+    # A tile is imaged by two orbits; a cloud-free pass may still miss part of it.
+    # Rank by cloud plus missing data so full-coverage scenes come first.
+    return sorted(ok, key=lambda s: s["cloud"] + s["nodata_pct"])[:n]
 
 
 def read_chip(scene: dict, lon: float, lat: float, radius_m: float) -> dict[str, np.ndarray]:
@@ -226,6 +228,17 @@ def disc_ring_contrast(img: np.ndarray, inner_m: float, ring_m: tuple[float, flo
     return mi, mr, (mi - mr) / (float(ring.std()) + 1e-3)
 
 
+def _neighbour_tiles(lat: float, lon: float, tile: str, step: float = 0.06) -> list[str]:
+    """MGRS tiles overlapping a point that sits near its own tile's edge."""
+    out = []
+    for dlat in (-step, 0, step):
+        for dlon in (-step, 0, step):
+            t = mgrs_tile(lat + dlat, lon + dlon)
+            if t != tile and t not in out:
+                out.append(t)
+    return out
+
+
 def candidate_features(index: SceneIndex, cand: dict, cfg: dict, chip_path: Path | None = None) -> dict:
     lat, lon = cand["lat"], cand["lon"]
     tile = mgrs_tile(lat, lon)
@@ -235,17 +248,26 @@ def candidate_features(index: SceneIndex, cand: dict, cfg: dict, chip_path: Path
     feats: dict = {"s2_tile": tile}
 
     for season in ("crop", "dry"):
-        scenes = pick_scenes(
-            index.scenes(tile, cfg["years"], cfg[f"{season}_season_months"]),
-            cfg["max_cloud_pct"], cfg["max_scenes_per_season"],
-        )
+        want = cfg["max_scenes_per_season"]
+        # Rank all clear scenes, then keep the first ones that actually cover the point:
+        # near a swath edge the clearest scenes can be empty here.
+        scenes = []
+        for t in [tile] + _neighbour_tiles(lat, lon, tile):
+            scenes += pick_scenes(
+                index.scenes(t, cfg["years"], cfg[f"{season}_season_months"]), cfg["max_cloud_pct"], want + 4,
+            )
         chips = []
         for s in scenes:
+            if len(chips) == want:
+                break
             try:
-                chips.append(retry(lambda s=s: read_chip(s, lon, lat, radius), what=f"{s['id']} chip",
-                                   on_error=lambda s=s: _forget(s)))
+                chip = retry(lambda s=s: read_chip(s, lon, lat, radius), what=f"{s['id']} chip",
+                             on_error=lambda s=s: _forget(s))
             except Exception as e:
                 log.warning("%s: skipping scene %s: %s", cand.get("id"), s["id"], str(e)[:120])
+                continue
+            if np.isfinite(chip["red"]).mean() >= 0.5:
+                chips.append(chip)
         comp = composite(chips)
         feats[f"{season}_scenes"] = len(chips)
         if comp is None:
