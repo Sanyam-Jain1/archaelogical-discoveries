@@ -26,8 +26,7 @@ Known sites ──────────► separate "rediscovered" from "new"
 
 A mound only counts as a discovery if it isn't already recorded. You don't need a perfect list, but you need a good one.
 
-- [x] **First pass (41 sites):** ASI Jodhpur Circle protected mounds, rows of the Hanumangarh and Suratgarh GPS surveys, and Wikipedia/ASI coordinates for the Haryana sites. Sources, quality and gaps are in [data/known_sites/SOURCES.md](../data/known_sites/SOURCES.md).
-- [ ] Get the full survey tables (about 85 + 79 GPS-located sites). Either allow the journal host in the environment's network settings, or drop the two PDFs into `data/raw/`.
+- [x] **182 recorded sites.** All 153 GPS-located sites from the Hanumangarh (2013) and Suratgarh (2014) village surveys, imported by `scripts/import_heritage_surveys.py`. Plus the ASI Jodhpur Circle protected mounds, and ASI/Wikipedia coordinates for Haryana. Sources, quality and gaps are in [data/known_sites/SOURCES.md](../data/known_sites/SOURCES.md).
 - [ ] Still to add:
   - *Indian Archaeology – A Review* "Explorations" sections (sites by district);
   - Dalal 1980 for Bikaner;
@@ -39,17 +38,21 @@ A mound only counts as a discovery if it isn't already recorded. You don't need 
 ## Phase 2: Calibrate on known ground (week 3)
 
 - [x] Pilot tile N29E074 (Kalibangan, Pilibanga, Rawatsar), checked against 15 recorded sites that fall inside it. The results are in [Calibration so far](#calibration-so-far).
-- [ ] Add a spectral (Sentinel-2) mound classifier trained on the recorded sites. This is needed for dune country, where elevation alone fails (see below).
+- [x] Sentinel-2 pixel classifier trained on the recorded sites (`spectral-train`). See [Pixel classifier](#pixel-classifier) for results.
 - [ ] Scan one Haryana tile (`--aoi haryana_calibration --tiles N29E075`) as a second check in denser farmland.
 
 ## Phase 3: Sweep the primary area (weeks 4–6)
 
+- [x] Done on 2026-10-09; results under [Full-area run](#full-area-run-2026-10-09).
+
 ```bash
-moundfinder -v scan --aoi thar_ghaggar_margin --out runs/thar --s2-top 300
+moundfinder -v scan --aoi thar_ghaggar_margin --out runs/thar --s2-top 100
+moundfinder -v spectral-train --tiles N29E074 N29E073 N29E075 N28E074 N28E073
+moundfinder -v spectral-predict runs/thar
 moundfinder export runs/thar --top 100
 ```
 
-The sweep covers six 1° tiles (~25,000 km² after the border buffer) and takes about 2 minutes per tile at `--s2-top 60`. Most of that time is spent on Sentinel-2 reads.
+The sweep covers six 1° tiles (~25,000 km² after the border buffer). The scan takes about 5 minutes per tile. Training takes about 45 minutes: composite downloads for the first run, then one fit per held-out site. Prediction takes about 2 minutes per tile once composites are cached.
 
 ## Phase 4: Historical cross-check (weeks 5–8)
 
@@ -129,6 +132,38 @@ What this means:
 1. **In open farmland or bare plain, the elevation detector works.** Recorded mounds land in the top few percent, so unrecorded mounds like them should too. This is the setting of the pilot's top candidates.
 2. **Villages on mounds are a separate stream.** Many old settlements here are still inhabited, so a modern village sits on the ancient mound. Those are rarely unrecorded and can't be checked without walking through someone's village, so the penalty stays. `calibrate` also prints the unpenalised rank.
 3. **In dune country, elevation can't tell a mound from a dune.** The priority Bikaner–Churu tract is dune country, so the next build is a Sentinel-2 spectral classifier trained on these recorded sites: the Orengo et al. approach that worked in Cholistan's dunes. Old maps and CORONA (Phase 4) add a second, independent signal.
+
+## Full-area run (2026-10-09)
+
+- **Scan** of all six tiles (about 25,000 km² outside the border belt): 21,615 elevation candidates. Recorded mounds in open ground rank at the very top: Banawali 1st, Bhannar Theri 9th, Kalibangan 11th, Baror 17th. **None of the top 100 elevation candidates are in the southern dune tiles (28–29° N)**, which confirms the dune blind spot.
+- **Pixel classifier** added 807 candidates of its own and scored the rest, giving 22,422 in total. Of the top 100 new ones, 62 are found by both detectors and 36 by the classifier alone.
+- **Shortlist** (`runs/thar/review.html`, `shortlist.kml/.gpx`): a first look at 10 m resolution sorts it into three groups:
+  - compact bare bumps in cultivated land: promising;
+  - large pale, speckled patches: at 10 m an unploughed mound and a village of pale-roofed houses look the same;
+  - flat dune sand next to big dune relief: probable false positives.
+
+  Sorting these needs the high-resolution satellite view linked from each card. That is Phase 5.
+
+## Pixel classifier
+
+`spectral-train` builds two-season (Jan–Feb crop peak, Apr–May dry) Sentinel-2 composites for each 100 km tile at 20 m, from 4 scenes per season, cached in `cache/s2_composites/`. It puts 27 per-pixel features on the DEM grid: bands, NDVI, a bare-soil index, brightness, their contrast with a ~330 m neighbourhood, and DEM relief. A random forest learns recorded-site pixels (within 80 m of each point, excluding built-up ones) against background pixels at least 2 km from any recorded site.
+
+**Honest accuracy.** Each site was held out in turn and scored by a model trained without it and without a random fifth of the background blocks:
+
+| Version | Sites held out | Median site beats … of held-out background | Sites ≥ 90% | Sites < 50% |
+|---|---|---|---|---|
+| 45 known sites, 150 m labels | 32 | 82% | 13 | 4 |
+| 45 known sites, 80 m labels | 32 | 88% | 15 | 6 |
+| **182 known sites, 80 m labels, dune background added** | **112** | **85%** | **43** | **6** |
+
+The classifier is a useful filter, not a detector on its own. At pixel level, 15% of background still outranks the median site. It works best combined with relief and shape, which is what the score does: classifier probability is half the weight.
+
+What we learned along the way:
+
+- **Label width matters.** Most mounds here are 1–2 ha, so 80 m labels beat 150 m ones.
+- **Unseen terrain fools it.** With no open-dune background in training, it fired on 1.5% of the Lunkaransar tile (87% of that on bare sand). Adding that tile as background cut its candidates there from 3,587 to 15.
+- **Composites need full-coverage scenes.** A tile is imaged by two orbits, and composites built from scenes of one orbit left 12–37% of four edge tiles empty. Scenes are now ranked by cloud plus missing data.
+- **The most useful features** are blue reflectance and the bare-soil index in both seasons, plus relief. That fits the idea that mound soils differ from field soils.
 
 ## Known limits
 

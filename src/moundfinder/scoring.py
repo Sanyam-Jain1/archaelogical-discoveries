@@ -26,7 +26,7 @@ def ramp(x: float, lo: float, hi: float) -> float:
     return min(1.0, max(0.0, (x - lo) / (hi - lo)))
 
 
-def components(c: dict) -> dict[str, float | None]:
+def components(c: dict, pixel_fallback: float | None = None) -> dict[str, float | None]:
     relief = ramp(c["peak_relief_m"], 1.5, 6.0)
     # Linear dunes, canal banks and roads are elongated; mounds are compact.
     shape = (1 - ramp(c["elongation"], 1.8, 3.5)) * (0.5 + 0.5 * ramp(c["solidity"], 0.5, 0.85))
@@ -36,7 +36,7 @@ def components(c: dict) -> dict[str, float | None]:
     size = ramp(a, 0.5, 1.0) if a < 1 else (1 - ramp(a, 30, 80))
     return {"relief": relief, "shape": shape, "isolation": isolation, "size": size, "spectral": spectral(c),
             # Pixel classifier probability (spectral.py), where it has been run.
-            "pixel": c.get("spectral_prob")}
+            "pixel": c["spectral_prob"] if c.get("spectral_prob") is not None else pixel_fallback}
 
 
 def spectral(c: dict) -> float | None:
@@ -82,8 +82,9 @@ def penalties(c: dict) -> tuple[float, list[str]]:
     return mult, flags
 
 
-def heuristic_score(c: dict, weights: dict[str, float], penalise: bool = True) -> float:
-    comp = components(c)
+def heuristic_score(c: dict, weights: dict[str, float], penalise: bool = True,
+                    pixel_fallback: float | None = None) -> float:
+    comp = components(c, pixel_fallback)
     total = wsum = 0.0
     for k, w in weights.items():
         if comp.get(k) is None:
@@ -95,12 +96,19 @@ def heuristic_score(c: dict, weights: dict[str, float], penalise: bool = True) -
 
 
 def score_all(cands: list[dict], weights: dict[str, float], model_path: str | Path | None = None) -> None:
+    # Where the pixel classifier ran but a candidate fell in a data gap, use the median
+    # probability rather than dropping the component (which would favour the gaps).
+    probs = [c["spectral_prob"] for c in cands if c.get("spectral_prob") is not None]
+    fallback = float(np.median(probs)) if probs else None
     for c in cands:
-        c["score_heuristic"] = heuristic_score(c, weights)
+        c["score_heuristic"] = heuristic_score(c, weights, pixel_fallback=fallback)
         # Without the village/tree/water penalties: how mound-like the shape alone is.
         # Many recorded mounds here carry a modern village, so calibration reports both.
-        c["score_unpenalised"] = heuristic_score(c, weights, penalise=False)
-        c["flags"] = ",".join(penalties(c)[1])
+        c["score_unpenalised"] = heuristic_score(c, weights, penalise=False, pixel_fallback=fallback)
+        flags = penalties(c)[1]
+        if fallback is not None and c.get("spectral_prob") is None:
+            flags.append("no_pixel_data")
+        c["flags"] = ",".join(flags)
     if model_path:
         with open(model_path, "rb") as f:
             model = pickle.load(f)
