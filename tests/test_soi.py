@@ -51,3 +51,18 @@ def test_mound_terms():
         assert MOUND_TERMS.search(t), t
     for t in ["Kalanwali", "Hissar", "Thermal"]:
         assert not MOUND_TERMS.search(t), t
+
+
+def test_label_phrases_join_name_and_term_on_one_line():
+    from moundfinder.soi import label_phrases
+
+    sheet = "44 K 03"
+    words = [
+        {"text": "Kalibangan", "lat": 29.4752, "lon": 74.1380, "sheet": sheet, "year": 1959, "conf": 90},
+        {"text": "(ruins)", "lat": 29.4752, "lon": 74.1418, "sheet": sheet, "year": 1959, "conf": 94},
+        {"text": "Pilibangan", "lat": 29.4900, "lon": 74.1418, "sheet": sheet, "year": 1959, "conf": 90},  # other line
+        {"text": "(ruins)", "lat": 29.4753, "lon": 74.1419, "sheet": sheet, "year": 1959, "conf": 80},  # tile duplicate
+    ]
+    out = label_phrases(words)
+    assert len(out) == 1
+    assert out[0]["label"] == "Kalibangan (ruins)"

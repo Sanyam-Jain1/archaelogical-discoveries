@@ -265,3 +265,38 @@ def load_index(path: Path) -> list[Sheet]:
     return [Sheet(d["name"], Path(d["path"]), tuple(d["bounds"]), d["year"],
                   tuple(tuple(c) for c in d["corners"]) if d.get("corners") else None)
             for d in json.loads(path.read_text())]
+
+
+def label_phrases(words: list[dict], terms: re.Pattern = MOUND_TERMS, reach_m: float = 450) -> list[dict]:
+    """Group each mound-term word with the words printed beside it on the same line.
+
+    Map labels read like "Kalibangan (ruins)" or "Kala Theh": the term alone says
+    something was there; the neighbouring words give its name. Words within
+    `reach_m` on roughly the same line (within 60 m north-south) are joined in
+    west-to-east order.
+    """
+    from .geo import metres_per_degree
+
+    out = []
+    for w in words:
+        if not terms.search(w["text"]):
+            continue
+        m_lon, m_lat = metres_per_degree(w["lat"])
+        line = [v for v in words if v["sheet"] == w["sheet"]
+                and abs(v["lat"] - w["lat"]) * m_lat < 60 and abs(v["lon"] - w["lon"]) * m_lon < reach_m]
+        line.sort(key=lambda v: v["lon"])
+        kept = []  # the two OCR grids can read the same word twice
+        for v in line:
+            if not any(k["text"].lower() == v["text"].lower() and abs(k["lon"] - v["lon"]) * m_lon < 150 for k in kept):
+                kept.append(v)
+        phrase = " ".join(v["text"] for v in kept)
+        out.append({"label": phrase, "term": w["text"], "lat": w["lat"], "lon": w["lon"], "sheet": w["sheet"],
+                    "year": w["year"], "conf": w["conf"]})
+    # One entry per label: drop terms read twice within 150 m with the same phrase.
+    dedup = []
+    for o in sorted(out, key=lambda o: -o["conf"]):
+        m_lon, m_lat = metres_per_degree(o["lat"])
+        if any(abs(o["lat"] - d["lat"]) * m_lat < 150 and abs(o["lon"] - d["lon"]) * m_lon < 150 for d in dedup):
+            continue
+        dedup.append(o)
+    return dedup
