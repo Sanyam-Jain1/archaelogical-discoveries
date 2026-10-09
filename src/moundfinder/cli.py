@@ -130,7 +130,10 @@ def cmd_soi_index(args, cfg):
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
-        results = list(pool.map(_index_one, files, [args.no_ocr] * len(files)))
+        results = []
+        for r in pool.map(_index_one, files, [args.no_ocr] * len(files), [out / "sheets"] * len(files)):
+            print(f"{r[0]}: {'skipped' if r[3] else f'{len(r[2])} words'}", flush=True)
+            results.append(r)
     sheets, words = [], []
     for name, sheet, ws, err in results:
         if err:
@@ -148,13 +151,24 @@ def cmd_soi_index(args, cfg):
     print(f"{len(sheets)} sheets georeferenced, {len(words)} words read, {len(terms)} mound terms -> {out}")
 
 
-def _index_one(path: Path, no_ocr: bool):
+def _index_one(path: Path, no_ocr: bool, cache: Path):
+    import json as _json
+
     from . import soi
 
     name = path.name.replace("_", " ")  # saved as 44_K_13_Hissar_District_(1914).jpg
+    done = cache / f"{path.stem}.json"  # per-sheet result, so a rerun resumes where it stopped
     try:
         sheet, rgb, _ = soi.open_sheet(path, name)
-        words = [] if no_ocr else soi.ocr_words(sheet, rgb)
+        if no_ocr:
+            return name, sheet, [], None
+        if done.exists():
+            return name, sheet, _json.loads(done.read_text()), None
+        words = soi.ocr_words(sheet, rgb)
+        cache.mkdir(parents=True, exist_ok=True)
+        tmp = done.with_suffix(".tmp")
+        tmp.write_text(_json.dumps(words))
+        tmp.replace(done)
         return name, sheet, words, None
     except Exception as e:  # one bad scan should not stop the rest
         return name, None, [], str(e)

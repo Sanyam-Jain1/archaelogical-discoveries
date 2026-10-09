@@ -20,12 +20,15 @@ the maps themselves.
 from __future__ import annotations
 
 import json
+import logging
 import re
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
+
+log = logging.getLogger("moundfinder")
 
 BLOCKS = {"44": (72.0, 28.0)}  # block -> (west longitude, south latitude); 4 x 4 degrees
 MOUND_TERMS = re.compile(r"\b(theh|thehr?i|khera|kheri|kheda|dheri|dhera|ruins?|mound|old\s*site|kot)\b", re.I)
@@ -207,8 +210,13 @@ def clean_for_ocr(rgb: np.ndarray) -> np.ndarray:
     return np.where(colored, 235, gray).astype(np.uint8)
 
 
-def ocr_words(sheet: Sheet, rgb: np.ndarray, scale: float = 3.0, tile: int = 900, overlap: int = 150) -> list[dict]:
-    """Every word Tesseract reads inside the neat line, with its position."""
+def ocr_words(sheet: Sheet, rgb: np.ndarray, scale: float = 3.0, tile: int = 900, overlap: int = 150,
+              tile_timeout_s: int = 90) -> list[dict]:
+    """Every word Tesseract reads inside the neat line, with its position.
+
+    Tesseract can run for hours on a tile of dense stipple (dune hatching), so
+    each tile gets a time limit; a timed-out tile is usually covered by the other grid.
+    """
     import cv2
     import pytesseract
 
@@ -224,7 +232,12 @@ def ocr_words(sheet: Sheet, rgb: np.ndarray, scale: float = 3.0, tile: int = 900
         t = clean[ty:min(ty + tile, ys), tx:min(tx + tile, xe)]
         t = cv2.resize(t, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
         t = cv2.threshold(t, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-        d = pytesseract.image_to_data(t, config="--psm 11", output_type=pytesseract.Output.DICT)
+        try:
+            d = pytesseract.image_to_data(t, config="--psm 11", output_type=pytesseract.Output.DICT,
+                                          timeout=tile_timeout_s)
+        except RuntimeError:  # pytesseract's timeout
+            log.warning("%s: OCR tile at (%d, %d) timed out", sheet.name, tx, ty)
+            continue
         for i, txt in enumerate(d["text"]):
             txt = txt.strip()
             if len(txt) < 3 or float(d["conf"][i]) < 45 or sum(ch.isalpha() for ch in txt) < 3:
