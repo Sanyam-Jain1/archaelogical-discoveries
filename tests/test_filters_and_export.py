@@ -64,13 +64,16 @@ def test_kml_and_gpx_are_valid_xml(tmp_path):
     assert gpx.find("{http://www.topografix.com/GPX/1/1}wpt").get("lat") == "29.470000"
 
 
-def test_known_sites_csv_is_well_formed():
+def test_known_sites_csvs_are_well_formed():
     import csv
+    import glob
 
-    with open("data/known_sites/seed_sites.csv", newline="") as f:
-        rows = list(csv.reader(f))
-    header = rows[0]
-    assert all(len(r) == len(header) for r in rows), "a row has stray commas"
-    for r in rows[1:]:
-        lat, lon = float(r[1]), float(r[2])
-        assert 27 < lat < 31 and 72 < lon < 78, r[0]
+    for path in glob.glob("data/known_sites/*.csv"):
+        with open(path, newline="") as f:
+            rows = list(csv.reader(f))
+        header = rows[0]
+        assert header[:5] == ["name", "lat", "lon", "radius_m", "precision_m"], path
+        assert all(len(r) == len(header) for r in rows), f"{path}: a row has stray commas"
+        for r in rows[1:]:
+            lat, lon = float(r[1]), float(r[2])
+            assert 27 < lat < 31 and 72 < lon < 78, (path, r[0])

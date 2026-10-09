@@ -1,28 +1,29 @@
 # Known-sites list: sources and status
 
-`seed_sites.csv` holds 41 recorded sites in and around the search areas. The pipeline treats a candidate within `radius_m + precision_m + 300 m` of one of them as already recorded, not new.
+The pipeline treats a candidate within `radius_m + precision_m + 300 m` of a recorded site as already recorded, not new. There are **182 sites** in two files:
 
-| Source | Sites | Coordinate quality |
-|---|---|---|
-| ASI Jodhpur Circle table of centrally protected monuments (`asijodhpurcircle.in/monuments`, IDs JDHRJ043–058) | 12 mounds in Ganganagar and Hanumangarh | Decimal degrees from ASI; best in the list |
-| ASI national list for Haryana (Wikipedia, N-HR-22 Banawali, N-HR-27 Agroha) | 2 | Arc-second |
-| Pawar et al. 2013, *Heritage* 1: 475–485: village-to-village survey of Hanumangarh district, 2008–12, handheld GPS | 13 of ~85 Harappan sites | GPS, but rows were pulled from search-engine text extracts and one pair looks garbled (see notes) |
-| Samunder & Dangi 2014, *Heritage* 2: 783–801: Suratgarh tehsil survey, handheld GPS | 2 of 79 sites | GPS, same caveat |
-| Wikipedia infoboxes | 12 | Arc-second to arc-minute; some may mark the village, not the mound |
-| AroundUs listing (Sothi) | 1 | Uncertain; Wikipedia's value contradicts its own text |
+| File | Source | Sites | Coordinate quality |
+|---|---|---|---|
+| `heritage_surveys.csv` | Pawar, Parmar & Sharan 2013, *Heritage* 1: 475–485, Table 2: Harappan-related sites from a village-to-village survey of Hanumangarh district, 2008–12 | 74 | Handheld GPS; site size in ha |
+| `heritage_surveys.csv` | Samunder & Dangi 2014, *Heritage* 2: 783–801, Table 1: every site explored in Suratgarh tehsil | 79 | Handheld GPS; 74 of them "placed on the archaeological map for the first time" by that survey |
+| `seed_sites.csv` | ASI Jodhpur Circle table of centrally protected monuments (JDHRJ043–058) | 12 | ASI decimal degrees |
+| `seed_sites.csv` | ASI national list for Haryana (N-HR-22 Banawali, N-HR-27 Agroha) | 2 | Arc-second |
+| `seed_sites.csv` | Wikipedia infoboxes and village geocodes (Haryana; Karanpura, Badopal, Sothi) | 15 | Arc-second to village level; see `notes` |
+
+`heritage_surveys.csv` is generated: put the two PDFs in `data/raw/` (git-ignored) and run `python scripts/import_heritage_surveys.py`. The script flags rows that sit far from the other sites of their tehsil. So far that's only Daniasar-II, whose latitude reads 29°57′ but is almost certainly 28°57′; it is kept with a 3 km precision.
+
+Cross-check: the Suratgarh survey's GPS point for Rang Mahal agrees with the ASI table to about 50 m. A Wikipedia mirror's value, 5 km to the north, was wrong.
 
 ## How it was gathered
 
-This sandbox's network blocks Wikipedia, Wikidata, Zenodo, the ASI sites and the journal hosts. All values were read from web-search results that quote those pages. That route is slow (1–3 rows per query) and occasionally garbles tables. Each row's `source` and `notes` say where it came from.
+The survey tables come straight from the journal PDFs. The `seed_sites.csv` values were read from web-search results quoting ASI and Wikipedia pages, because this sandbox could not reach those sites. Each row's `source` and `notes` say where it came from.
 
 ## Biggest gaps, in order of value
 
-1. **The full tables of the two *Heritage* surveys.** That's about 85 Harappan sites (out of 574 visited) in Hanumangarh and 79 sites in Suratgarh tehsil, all GPS-located. They cover the north of the search area. The PDFs are small and free:
-   - https://www.heritageuniversityofkerala.com/JournalPDF/Volume1/475-485.pdf
-   - https://www.heritageuniversityofkerala.com/JournalPDF/Volume2/783-801.pdf
+1. **The non-Harappan sites of the Hanumangarh survey.** It visited 574 sites but tabulates only the 74 Harappan-related ones. Early-historic and medieval mounds there are still missing.
 2. **The rest of the ASI Jodhpur Circle table:** Bhadrakali, Dhokal (twin mounds "Ekkal-Dhokal") and Tarkhanewala Dera are listed but have no coordinates here yet.
 3. **Bikaner and Churu.** No surveyed site list with coordinates turned up for the dune tract. This is the expected gap, and the reason that area is the priority.
 4. **Haryana survey gazetteers** (LWS/TwoRains, Kurukshetra University, the state department), for calibration.
 5. **Wikidata**: one query would return every archaeological site with coordinates in the region.
 
-To fill items 1, 2 and 5 automatically, allow `heritageuniversityofkerala.com`, `asijodhpurcircle.in`, `asijaipurcircle.nic.in` and `query.wikidata.org` in the cloud environment's network settings. Or download the two PDFs yourself and put them in `data/raw/`. That folder is git-ignored, so the journal PDFs are not redistributed.
+To fill items 2 and 5 automatically, allow `asijodhpurcircle.in`, `asijaipurcircle.nic.in` and `query.wikidata.org` in the cloud environment's network settings.
