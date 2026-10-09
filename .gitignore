@@ -6,3 +6,5 @@ __pycache__/
 # Pipeline outputs and caches (large, regenerable)
 runs/
 cache/
+# Source documents (journal PDFs etc.), not redistributed
+data/raw/

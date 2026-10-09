@@ -73,7 +73,7 @@ def penalties(c: dict) -> tuple[float, list[str]]:
     return mult, flags
 
 
-def heuristic_score(c: dict, weights: dict[str, float]) -> float:
+def heuristic_score(c: dict, weights: dict[str, float], penalise: bool = True) -> float:
     comp = components(c)
     total = wsum = 0.0
     for k, w in weights.items():
@@ -81,13 +81,16 @@ def heuristic_score(c: dict, weights: dict[str, float]) -> float:
             continue
         total += w * comp[k]
         wsum += w
-    mult, _ = penalties(c)
+    mult = penalties(c)[0] if penalise else 1.0
     return round(mult * total / wsum, 4)
 
 
 def score_all(cands: list[dict], weights: dict[str, float], model_path: str | Path | None = None) -> None:
     for c in cands:
         c["score_heuristic"] = heuristic_score(c, weights)
+        # Without the village/tree/water penalties: how mound-like the shape alone is.
+        # Many recorded mounds here carry a modern village, so calibration reports both.
+        c["score_unpenalised"] = heuristic_score(c, weights, penalise=False)
         c["flags"] = ",".join(penalties(c)[1])
     if model_path:
         with open(model_path, "rb") as f:

@@ -27,6 +27,8 @@ def cmd_scan(args, cfg):
 def cmd_export(args, cfg):
     run = Path(args.run)
     cands = pipeline.load_candidates(run)
+    pipeline.refresh_known(cfg, cands)
+    pipeline.save_candidates(cands, run)
     export.write_csv(cands, run / "candidates.csv")
     short = export.shortlist(cands, args.top, args.include_known)
     export.write_kml(short, run / "shortlist.kml")
@@ -36,14 +38,19 @@ def cmd_export(args, cfg):
 
 
 def cmd_calibrate(args, cfg):
-    rows = pipeline.calibration_report(cfg, pipeline.load_candidates(Path(args.run)), args.aoi)
+    rows = pipeline.calibration_report(cfg, pipeline.load_candidates(Path(args.run)), args.aoi, Path(args.run))
     if not rows:
         print("no recorded sites fall inside the scanned area; add some to data/known_sites/")
         return
+    print(f"{'site':28} {'found':>5} {'rank':>6} {'pct':>6} {'unpen.':>6} {'height':>6} {'relief':>6}  flags")
     for r in rows:
-        print(json.dumps(r))
+        print(f"{r['site'][:28]:28} {'yes' if r['found'] else 'no':>5} {r['rank'] or '-':>6} "
+              f"{r['percentile'] if r['percentile'] is not None else '-':>6} {r['rank_unpenalised'] or '-':>6} "
+              f"{r['peak_relief_m'] or '-':>6} {r['max_relief_m'] if r['max_relief_m'] is not None else '-':>6}  {r['flags']}")
+    print("rank = final score rank; unpen. = rank ignoring village/tree/water penalties; "
+          "height = matched blob; relief = max local relief within the site's uncertainty radius")
     found = sum(r["found"] for r in rows)
-    print(f"recall: {found}/{len(rows)} recorded sites detected")
+    print(f"recall: {found}/{len(rows)} recorded sites detected (of {rows[0]['of']} candidates)")
 
 
 def cmd_train(args, cfg):

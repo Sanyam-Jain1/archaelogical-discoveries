@@ -26,17 +26,20 @@ Known sites ──────────► separate "rediscovered" from "new"
 
 A mound only counts as a discovery if it isn't already recorded. You don't need a perfect list, but you need a good one.
 
-- [ ] Extend `data/known_sites/` (same CSV columns as `seed_sites.csv`) from:
-  - *Indian Archaeology – A Review* (ASI's annual volumes; the "Explorations" sections list sites by district). Many volumes are online.
-  - published survey lists: Pawar et al. for Hanumangarh, Dalal 1980 for Bikaner, Garge's 377-site Chautang basin monograph, LWS/TwoRains reports;
-  - the [Wikipedia list](https://en.wikipedia.org/wiki/List_of_Indus_Valley_Civilisation_sites) and Wikidata;
-  - ASI and Rajasthan protected-monument lists.
+- [x] **First pass (41 sites):** ASI Jodhpur Circle protected mounds, rows of the Hanumangarh and Suratgarh GPS surveys, and Wikipedia/ASI coordinates for the Haryana sites. Sources, quality and gaps are in [data/known_sites/SOURCES.md](../data/known_sites/SOURCES.md).
+- [ ] Get the full survey tables (about 85 + 79 GPS-located sites). Either allow the journal host in the environment's network settings, or drop the two PDFs into `data/raw/`.
+- [ ] Still to add:
+  - *Indian Archaeology – A Review* "Explorations" sections (sites by district);
+  - Dalal 1980 for Bikaner;
+  - Garge's 377-site Chautang basin monograph;
+  - LWS/TwoRains reports;
+  - Wikidata.
 - [ ] Record each source's coordinate precision honestly. Many published sites are only placed to the nearest village.
 
 ## Phase 2: Calibrate on known ground (week 3)
 
-- [x] Pilot tile N29E074 (Kalibangan, Pilibanga, Rawatsar): Kalibangan ranks **5th of 5,594** relief blobs. See [pilot results](#pilot-result-tile-n29e074).
-- [ ] Add 30+ recorded sites in the scanned tiles. Run `moundfinder calibrate` and tune `config/settings.yaml` until recall of recorded mounds that are ≥2 m tall is high and they sit in the top few percent.
+- [x] Pilot tile N29E074 (Kalibangan, Pilibanga, Rawatsar), checked against 15 recorded sites that fall inside it. The results are in [Calibration so far](#calibration-so-far).
+- [ ] Add a spectral (Sentinel-2) mound classifier trained on the recorded sites. This is needed for dune country, where elevation alone fails (see below).
 - [ ] Scan one Haryana tile (`--aoi haryana_calibration --tiles N29E075`) as a second check in denser farmland.
 
 ## Phase 3: Sweep the primary area (weeks 4–6)
@@ -88,7 +91,8 @@ This was run in the sandbox on 2026-10-09. The tile covers 29–30° N, 74–75�
 
 - 8,611 relief blobs → 5,594 inside the AOI and outside the border belt.
 - 69 blobs got Sentinel-2 checks: the top 60, plus every one on a recorded site.
-- Recall on known sites: Kalibangan (8.5 m, 14 ha) is detected and ranks **5th**. Only one recorded site in the seed list falls in this tile, so this is a smoke test, not a calibration.
+- Kalibangan (8.5 m, 14 ha) ranks **5th**. The full check against the 15 recorded sites in this tile is in [Calibration so far](#calibration-so-far).
+- None of the top six below match the 41 known sites; the nearest is 2.7 km away. But the Hanumangarh survey visited 574 sites, and only 13 of its rows are in the list so far. So they are not yet shown to be unrecorded.
 
 Top six unmatched candidates. Coordinates are left out on purpose (see the field protocol). Re-run the scan to get them locally. Top row: Sentinel-2 in the dry season, red cross on the candidate. Bottom row: local relief, 0–6 m.
 
@@ -110,8 +114,24 @@ Lessons from the pilot, already built into the code:
 - Modern villages topped the first ranking, because the DEM is a surface model and buildings add height. Land cover is now measured over the candidate's own footprint, and built-up candidates are penalised.
 - Earth Search Sentinel-2 files already have the reflectance offset applied. The code reads the `earthsearch:boa_offset_applied` flag instead of applying the offset twice.
 
+## Calibration so far
+
+This is `moundfinder calibrate runs/test_N29E074` against the 15 recorded sites in the tile (out of 5,594 candidates). It re-matches against the current list, so no re-download is needed.
+
+| Setting | Sites | Rank among 5,594 |
+|---|---|---|
+| Open fields, no village on top | Kalibangan, Karouti, Badopal, Sothi, Peer Sultan | **5, 70, 222, 263, 353** (top 6%) |
+| Modern village on the mound | Pilibanga, Manak, Munda, Dabli ×2, Ramsaranarayan | 4,700–5,600 (village penalty). Ignoring the penalty, 250–1,650 |
+| Dune field | Hardaswali-II, Moter-II, Badbirana-V | Missed or mid-table: 11–12 m of sand relief nearby swamps a 2–3 m mound |
+
+What this means:
+
+1. **In open farmland or bare plain, the elevation detector works.** Recorded mounds land in the top few percent, so unrecorded mounds like them should too. This is the setting of the pilot's top candidates.
+2. **Villages on mounds are a separate stream.** Many old settlements here are still inhabited, so a modern village sits on the ancient mound. Those are rarely unrecorded and can't be checked without walking through someone's village, so the penalty stays. `calibrate` also prints the unpenalised rank.
+3. **In dune country, elevation can't tell a mound from a dune.** The priority Bikaner–Churu tract is dune country, so the next build is a Sentinel-2 spectral classifier trained on these recorded sites: the Orengo et al. approach that worked in Cholistan's dunes. Old maps and CORONA (Phase 4) add a second, independent signal.
+
 ## Known limits
 
 - **A 30 m DEM misses small sites.** Mounds under about 1.5 m tall or about 80 m across are invisible to the DEM stage. The historical maps and the spectral evidence have to catch those, which is Phase 4 work.
-- **The heuristic score is uncalibrated** until Phase 2 adds more recorded sites and Phase 5 adds labels.
+- **The heuristic score is hand-tuned.** It works in open plains (see above) but needs the classifier and labels before it can be trusted in dunes.
 - **Sentinel-1 radar isn't used yet.** It was one of the two sensors in Orengo et al. and is worth adding for the dune tract.

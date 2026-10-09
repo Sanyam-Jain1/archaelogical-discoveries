@@ -64,14 +64,12 @@ def scan_tile(cfg, tile, aoi, border, known, out_dir, s2_top, cache_dir, workers
             continue
         c["id"] = f"{tile}-{i:05d}"
         c["tile"] = tile
-        site, dist = match(c["lat"], c["lon"], known, cfg["known_site_margin_m"])
-        c["known_site"] = site.name if site else ""
-        c["known_site_dist_m"] = round(dist) if site else None
         kept.append(c)
+    match_known(kept, known, cfg["known_site_margin_m"])
     log.info("%s: %d inside AOI and outside the %g km border belt", tile, len(kept), buffer_km)
 
     log.info("%s: land cover", tile)
-    lc = LandCover(bounds)
+    lc = LandCover(bounds, cache_dir=cache_dir)
     for c in kept:
         # Sample the candidate's own footprint: a 200 m village diluted by a
         # wide circle of fields would otherwise pass as an empty mound.
@@ -105,6 +103,18 @@ def scan_tile(cfg, tile, aoi, border, known, out_dir, s2_top, cache_dir, workers
     return kept
 
 
+def match_known(cands: list[dict], known, margin_m: float) -> None:
+    for c in cands:
+        site, dist = match(c["lat"], c["lon"], known, margin_m)
+        c["known_site"] = site.name if site else ""
+        c["known_site_dist_m"] = round(dist) if site else None
+
+
+def refresh_known(cfg: dict, cands: list[dict]) -> None:
+    """Re-match a finished scan against the current known-sites files (no downloads)."""
+    match_known(cands, load_known_sites(cfg["known_sites"]), cfg["known_site_margin_m"])
+
+
 def _save_relief(relief: np.ndarray, transform, path: Path) -> None:
     profile = dict(driver="GTiff", dtype="float32", count=1, width=relief.shape[1], height=relief.shape[0],
                    crs="EPSG:4326", transform=transform, compress="deflate", predictor=3, tiled=True)
@@ -127,14 +137,22 @@ def load_candidates(out_dir: Path) -> list[dict]:
     return [f["properties"] for f in data["features"]]
 
 
-def calibration_report(cfg: dict, cands: list[dict], aoi_name: str) -> list[dict]:
-    """For each recorded site the scan could have found: was it found, and how high did it rank?"""
+def calibration_report(cfg: dict, cands: list[dict], aoi_name: str, run_dir: Path | None = None) -> list[dict]:
+    """For each recorded site the scan could have found: was it found, and how high did it rank?
+
+    `max_relief_m` is the highest local relief within the site's radius + coordinate
+    precision. A missed site with high relief there means the detector or filters
+    dropped it; one with no relief is either levelled or has wrong coordinates.
+    """
+    refresh_known(cfg, cands)
     known = load_known_sites(cfg["known_sites"])
     aoi = load_aoi(cfg["aois"], aoi_name)
     border = BorderDistance(cfg["border"])
     tiles = {c["tile"] for c in cands}
+    score_all(cands, cfg["scoring"]["weights"])
     ranked = sorted(cands, key=lambda c: -c["score"])
     rank_of = {c["id"]: i + 1 for i, c in enumerate(ranked)}
+    raw_rank_of = {c["id"]: i + 1 for i, c in enumerate(sorted(cands, key=lambda c: -c["score_unpenalised"]))}
     rows = []
     for s in known:
         tile = f"N{int(s.lat):02d}E{int(s.lon):03d}"
@@ -144,13 +162,34 @@ def calibration_report(cfg: dict, cands: list[dict], aoi_name: str) -> list[dict
             continue
         hits = [c for c in cands if c["known_site"] == s.name]
         best = min(hits, key=lambda c: rank_of[c["id"]]) if hits else None
+        best_raw = min(hits, key=lambda c: raw_rank_of[c["id"]]) if hits else None
         rows.append({
             "site": s.name,
             "found": bool(best),
             "rank": rank_of[best["id"]] if best else None,
+            "rank_unpenalised": raw_rank_of[best_raw["id"]] if best_raw else None,
+            "flags": best["flags"] if best else "",
             "of": len(cands),
             "percentile": round(100 * (1 - rank_of[best["id"]] / len(cands)), 1) if best else None,
             "peak_relief_m": best["peak_relief_m"] if best else None,
             "score": best["score"] if best else None,
+            "max_relief_m": _max_relief(run_dir, tile, s) if run_dir else None,
         })
     return rows
+
+
+def _max_relief(run_dir: Path, tile: str, site) -> float | None:
+    path = run_dir / f"relief_{tile}.tif"
+    if not path.exists():
+        return None
+    from rasterio.windows import from_bounds
+
+    from .geo import metres_per_degree
+
+    m_lon, m_lat = metres_per_degree(site.lat)
+    r = site.radius_m + site.precision_m
+    with rasterio.open(path) as src:
+        win = from_bounds(site.lon - r / m_lon, site.lat - r / m_lat, site.lon + r / m_lon, site.lat + r / m_lat,
+                          src.transform)
+        data = src.read(1, window=win, boundless=True, fill_value=0)
+    return round(float(data.max()), 2)
