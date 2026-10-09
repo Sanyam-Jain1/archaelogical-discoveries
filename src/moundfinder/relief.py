@@ -38,6 +38,11 @@ def local_relief(dem: np.ndarray, px_w: float, px_h: float, window_m: float, sig
     return z - ndi.grey_opening(z, size=size)
 
 
+def relief_context(mask: np.ndarray, px_w: float, px_h: float, window_m: float) -> np.ndarray:
+    """Share of the surrounding window that is relief: high in dune fields, low on plains."""
+    return ndi.uniform_filter(mask.astype(np.float32), size=(_odd(window_m / px_h), _odd(window_m / px_w)))
+
+
 def detect_mounds(dem: np.ndarray, transform, cfg: dict) -> tuple[list[dict], np.ndarray]:
     """Return (candidates, relief raster) for a DEM in geographic coordinates."""
     rows, cols = dem.shape
@@ -49,8 +54,7 @@ def detect_mounds(dem: np.ndarray, transform, cfg: dict) -> tuple[list[dict], np
     mask = relief >= cfg["min_relief_m"]
     labels, n = ndi.label(mask, structure=np.ones((3, 3), bool))
 
-    ctx = (_odd(cfg["context_window_m"] / px_h), _odd(cfg["context_window_m"] / px_w))
-    relief_density = ndi.uniform_filter(mask.astype(np.float32), size=ctx)
+    relief_density = relief_context(mask, px_w, px_h, cfg["context_window_m"])
 
     min_px = cfg["min_area_ha"] * 1e4 / px_area
     max_px = cfg["max_area_ha"] * 1e4 / px_area

@@ -65,6 +65,24 @@ def cmd_train(args, cfg):
     print("re-scored candidates with the model; run `export` again for a new shortlist")
 
 
+def cmd_spectral_train(args, cfg):
+    stats = pipeline.spectral_train(cfg, args.tiles, Path(args.model), Path(args.cache))
+    print(f"{stats['sites']} recorded sites, {stats['positives']} positive / {stats['negatives']} background pixels")
+    print("held-out sites (model trained without the site and without nearby background):")
+    for r in stats["held_out"]:
+        print(f"  {r['site'][:30]:30} median p={r['median_prob']:.2f}  beats {r['percentile_vs_background']:5.1f}% of background")
+    print("top features:", ", ".join(f"{n} {v}" for n, v in stats["top_features"]))
+    print(f"model -> {args.model}")
+
+
+def cmd_spectral_predict(args, cfg):
+    cands = pipeline.spectral_predict(cfg, Path(args.run), Path(args.model), args.aoi, Path(args.cache), args.tiles)
+    by = {}
+    for c in cands:
+        by[c.get("source", "dem")] = by.get(c.get("source", "dem"), 0) + 1
+    print(f"{len(cands)} candidates by source: {by}; run `export` for a new shortlist")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="moundfinder", description=__doc__)
     p.add_argument("--config", default="config/settings.yaml")
@@ -96,6 +114,20 @@ def main(argv=None):
     t.add_argument("run")
     t.add_argument("--labels", required=True, help="CSV with columns id,label (1 site, 0 not)")
     t.set_defaults(func=cmd_train)
+
+    st = sub.add_parser("spectral-train", help="train the Sentinel-2 pixel classifier on recorded sites")
+    st.add_argument("--tiles", nargs="+", required=True)
+    st.add_argument("--model", default="models/spectral.pkl")
+    st.add_argument("--cache", default="cache")
+    st.set_defaults(func=cmd_spectral_train)
+
+    sp = sub.add_parser("spectral-predict", help="map mound probability over a scanned run and add its candidates")
+    sp.add_argument("run")
+    sp.add_argument("--model", default="models/spectral.pkl")
+    sp.add_argument("--aoi", default="thar_ghaggar_margin")
+    sp.add_argument("--tiles", nargs="*")
+    sp.add_argument("--cache", default="cache")
+    sp.set_defaults(func=cmd_spectral_predict)
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(asctime)s %(message)s")

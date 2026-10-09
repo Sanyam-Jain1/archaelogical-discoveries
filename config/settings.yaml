@@ -35,8 +35,19 @@ sentinel2:
   dry_season_months: [4, 5]
   years: [2023, 2024]
   max_scenes_per_season: 2
+  # Scenes per season for the whole-tile composites used by the pixel classifier.
+  composite_scenes: 3
   max_cloud_pct: 20
   chip_radius_m: 600
+
+spectral:
+  # Pixel classifier (spectral.py): candidates are patches with probability >= threshold.
+  threshold: 0.5
+  min_area_ha: 0.5
+  max_area_ha: 80
+  # A spectral patch within this distance of a DEM candidate is merged into it.
+  merge_distance_m: 150
+  negatives_per_tile: 20000
 
 scoring:
   weights:
@@ -45,3 +56,5 @@ scoring:
     isolation: 0.20
     spectral: 0.20
     size: 0.10
+    # Pixel-classifier probability, once `spectral-predict` has run: half the score.
+    pixel: 1.0

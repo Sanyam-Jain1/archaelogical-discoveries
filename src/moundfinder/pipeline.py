@@ -16,8 +16,9 @@ from . import dem as dem_mod
 from .geo import BorderDistance, load_aoi, one_degree_tiles, tile_bounds
 from .knownsites import load_known_sites, match
 from .landcover import LandCover
-from .relief import detect_mounds
+from .relief import detect_mounds, local_relief, pixel_size_m, relief_context
 from .scoring import score_all
+from . import spectral
 from .sentinel2 import SceneIndex, candidate_features, mgrs_tile
 
 log = logging.getLogger("moundfinder")
@@ -193,3 +194,90 @@ def _max_relief(run_dir: Path, tile: str, site) -> float | None:
                           src.transform)
         data = src.read(1, window=win, boundless=True, fill_value=0)
     return round(float(data.max()), 2)
+
+
+# --- Pixel classifier (see spectral.py) -------------------------------------------------
+
+
+def tile_inputs(cfg: dict, tile: str, cache_dir: Path):
+    """DEM, local relief, relief density and land cover for one 1-degree tile (all cached)."""
+    bounds = tile_bounds(tile)
+    elev, transform = dem_mod.read_dem(bounds, cache_dir=cache_dir)
+    px_w, px_h = pixel_size_m(transform, (bounds[1] + bounds[3]) / 2)
+    d = cfg["dem"]
+    relief = local_relief(elev, px_w, px_h, d["tophat_window_m"], d.get("smooth_sigma_px", 1.0))
+    density = relief_context(relief >= d["min_relief_m"], px_w, px_h, d["context_window_m"])
+    return bounds, elev, transform, relief, density, LandCover(bounds, cache_dir=cache_dir)
+
+
+def spectral_train(cfg: dict, tiles: list[str], model_path: Path, cache_dir: Path) -> dict:
+    known = load_known_sites(cfg["known_sites"])
+    rng = np.random.default_rng(0)
+    Xs, ys, gs, names = [], [], [], None
+    for tile in tiles:
+        log.info("%s: building features", tile)
+        bounds, elev, transform, relief, _, lc = tile_inputs(cfg, tile, cache_dir)
+        names, feats = spectral.tile_features(bounds, elev.shape, transform, relief, cfg["sentinel2"], cache_dir)
+        built = spectral.builtup_fraction(lc, elev.shape, transform)
+        X, y, g = spectral.sample_training(feats, transform, known, built, rng,
+                                           n_negative=cfg["spectral"]["negatives_per_tile"])
+        log.info("%s: %d positive pixels from %d sites, %d negatives", tile, int(y.sum()),
+                 len({a for a, b in zip(g, y) if b}), int((y == 0).sum()))
+        Xs.append(X), ys.append(y), gs.append(g)
+        del feats
+    model_path.parent.mkdir(parents=True, exist_ok=True)
+    return spectral.train_classifier(np.concatenate(Xs), np.concatenate(ys), np.concatenate(gs), names, model_path)
+
+
+def spectral_predict(cfg: dict, run_dir: Path, model_path: Path, aoi_name: str, cache_dir: Path,
+                     tiles: list[str] | None = None) -> list[dict]:
+    import pickle
+
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+    sc = cfg["spectral"]
+    aoi = load_aoi(cfg["aois"], aoi_name)
+    border = BorderDistance(cfg["border"])
+    cands = load_candidates(run_dir)
+    tiles = tiles or sorted({c["tile"] for c in cands})
+    for tile in tiles:
+        log.info("%s: predicting", tile)
+        bounds, elev, transform, relief, density, lc = tile_inputs(cfg, tile, cache_dir)
+        names, feats = spectral.tile_features(bounds, elev.shape, transform, relief, cfg["sentinel2"], cache_dir)
+        prob = spectral.predict(model, names, feats)
+        del feats
+        _save_float(prob, transform, run_dir / f"prob_{tile}.tif")
+        # Re-running replaces this tile's spectral-only candidates.
+        cands = [c for c in cands if not (c["tile"] == tile and c.get("source") == "spectral")]
+        tile_cands = [c for c in cands if c["tile"] == tile]
+        spectral.footprint_prob(tile_cands, prob, transform)
+        for c in tile_cands:
+            c["source"] = "both" if (c.get("spectral_prob") or 0) >= sc["threshold"] else "dem"
+        blobs = spectral.prob_blobs(prob, relief, elev, transform, sc["threshold"], sc["min_area_ha"],
+                                    sc["max_area_ha"], density)
+        blobs = spectral.uncovered(blobs, tile_cands, sc["merge_distance_m"])
+        added = 0
+        for i, b in enumerate(blobs):
+            if not aoi.contains(Point(b["lon"], b["lat"])):
+                continue
+            b["border_km"] = round(border.km(b["lon"], b["lat"]), 1)
+            if b["border_km"] < cfg["border_buffer_km"]:
+                continue
+            b["id"] = f"{tile}-S{i:05d}"
+            b["tile"] = tile
+            radius = max(cfg["landcover"]["min_radius_m"], math.sqrt(b["area_ha"] * 1e4 / math.pi))
+            b.update(lc.fractions(b["lat"], b["lon"], radius))
+            cands.append(b)
+            added += 1
+        log.info("%s: %d spectral-only candidates added", tile, added)
+    refresh_known(cfg, cands)
+    score_all(cands, cfg["scoring"]["weights"])
+    save_candidates(cands, run_dir)
+    return cands
+
+
+def _save_float(arr: np.ndarray, transform, path: Path) -> None:
+    profile = dict(driver="GTiff", dtype="float32", count=1, width=arr.shape[1], height=arr.shape[0],
+                   crs="EPSG:4326", transform=transform, nodata=np.nan, compress="deflate", predictor=3, tiled=True)
+    with rasterio.open(path, "w", **profile) as dst:
+        dst.write(arr.astype(np.float32), 1)

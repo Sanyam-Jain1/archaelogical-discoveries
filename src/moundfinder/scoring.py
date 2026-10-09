@@ -18,7 +18,7 @@ import numpy as np
 FEATURES = [
     "peak_relief_m", "mean_relief_m", "area_ha", "volume_m3", "elongation", "solidity",
     "relief_density", "lc_built", "lc_tree", "lc_crop", "lc_bare", "lc_shrub",
-    "crop_ndvi_z", "crop_ndvi_ring", "dry_bright_z", "dry_bsi_z", "dry_ndvi_z",
+    "crop_ndvi_z", "crop_ndvi_ring", "dry_bright_z", "dry_bsi_z", "dry_ndvi_z", "spectral_prob",
 ]
 
 
@@ -34,7 +34,9 @@ def components(c: dict) -> dict[str, float | None]:
     isolation = 1 - ramp(c["relief_density"], 0.05, 0.25)
     a = c["area_ha"]
     size = ramp(a, 0.5, 1.0) if a < 1 else (1 - ramp(a, 30, 80))
-    return {"relief": relief, "shape": shape, "isolation": isolation, "size": size, "spectral": spectral(c)}
+    return {"relief": relief, "shape": shape, "isolation": isolation, "size": size, "spectral": spectral(c),
+            # Pixel classifier probability (spectral.py), where it has been run.
+            "pixel": c.get("spectral_prob")}
 
 
 def spectral(c: dict) -> float | None:

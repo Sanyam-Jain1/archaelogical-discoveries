@@ -14,8 +14,9 @@ This project looks for **unrecorded ancient settlement mounds** in free satellit
 2. **Filters:** keep candidates inside the AOI and more than 25 km from the international border. Match them against `data/known_sites/` (rediscoveries are kept for calibration).
 3. **Land cover:** ESA WorldCover over each candidate's footprint, to flag villages and tree groves (both raise a surface model).
 4. **Sentinel-2:** two seasonal composites per top candidate. Crop-season NDVI deficit shows a mound as a hole in green fields; dry-season brightness and bare-soil contrast pick up mound soils. A true-colour chip is saved for review.
-5. **Scoring:** a transparent heuristic until you have labels, then a random forest trained on your labels plus the recorded sites (as in Orengo et al. 2020).
-6. **Export:** CSV, KML/GPX for your phone, and an HTML review page with image chips.
+5. **Pixel classifier** (`spectral-train` / `spectral-predict`): a random forest on two-season, whole-tile Sentinel-2 composites, local colour contrast and relief, trained on the recorded sites (the Orengo et al. 2020 approach). It finds mound surfaces where elevation can't, such as among dunes, and adds its own candidates.
+6. **Scoring:** a transparent heuristic that combines shape, relief, isolation, spectral contrast and the classifier's probability. Once you have labels, a random forest trained on them replaces it.
+7. **Export:** CSV, KML/GPX for your phone, and an HTML review page with image chips.
 
 Everything reads straight from public cloud buckets. You don't need any accounts or API keys.
 
@@ -33,6 +34,11 @@ moundfinder export runs/pilot --top 50                        # review.html, sho
 # Whole primary area
 moundfinder -v scan --aoi thar_ghaggar_margin --out runs/thar --s2-top 300
 
+# Pixel classifier: train on tiles with recorded sites, then map a run
+moundfinder -v spectral-train --tiles N29E074 N29E073 N29E075 N28E074
+moundfinder -v spectral-predict runs/thar
+moundfinder export runs/thar --top 100
+
 # After labelling candidates (labels.csv: id,label with 1 = site, 0 = not)
 moundfinder train runs/pilot --labels labels.csv
 moundfinder export runs/pilot --top 50
@@ -45,7 +51,7 @@ The AOIs are in `config/aois.geojson` (`thar_ghaggar_margin`, `bikaner_churu_gap
 ```
 config/            AOIs, border line, settings
 data/known_sites/  recorded sites (seed list; extend it, see PLAN Phase 1)
-src/moundfinder/   dem, relief, landcover, sentinel2, knownsites, scoring, export, pipeline, cli
+src/moundfinder/   dem, relief, landcover, sentinel2, spectral, knownsites, scoring, export, pipeline, cli
 tests/             synthetic-terrain and unit tests
 docs/              area choice, plan, field protocol
 ```
