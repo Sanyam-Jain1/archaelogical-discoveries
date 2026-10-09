@@ -62,3 +62,15 @@ def test_kml_and_gpx_are_valid_xml(tmp_path):
     gpx = ET.parse(tmp_path / "a.gpx").getroot()
     assert len(kml.findall(".//{http://www.opengis.net/kml/2.2}Placemark")) == 1
     assert gpx.find("{http://www.topografix.com/GPX/1/1}wpt").get("lat") == "29.470000"
+
+
+def test_known_sites_csv_is_well_formed():
+    import csv
+
+    with open("data/known_sites/seed_sites.csv", newline="") as f:
+        rows = list(csv.reader(f))
+    header = rows[0]
+    assert all(len(r) == len(header) for r in rows), "a row has stray commas"
+    for r in rows[1:]:
+        lat, lon = float(r[1]), float(r[2])
+        assert 27 < lat < 31 and 72 < lon < 78, r[0]

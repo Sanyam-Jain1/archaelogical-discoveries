@@ -4,7 +4,7 @@ Pilibanga mound,29.497778,74.085,300,200,Early Historic / Rang Mahal,"ASI Jodhpu
 Manak (Manaktheri) mound,29.364158,74.029142,300,200,Rang Mahal,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ055
 Munda mound,29.466389,74.401389,300,200,Rang Mahal,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ056
 Peer Sultan mound,29.572639,74.485836,300,200,Rang Mahal,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ057
-Baror,29.168611,73.313611,300,200,Early/Mature Harappan,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ043; 25.7 km from the border, just outside the buffer
+Baror,29.168611,73.313611,300,200,Early/Mature Harappan,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ043; 25.7 km from the border (just outside the buffer)
 Bhannar Theri,29.360278,73.924722,300,200,Rang Mahal,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ044
 Binjor mound A,29.223608,73.127481,300,200,Early/Mature Harappan,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ045; inside border buffer
 Binjor mound B (4MSR),29.214454,73.157057,300,200,Early/Mature Harappan,"ASI Jodhpur Circle monuments table (asijodhpurcircle.in), via web search",JDHRJ045; inside border buffer
@@ -33,14 +33,14 @@ Chak 7 SGM,29.360778,73.813694,250,300,multi-period,"Samunder & Dangi 2014, Heri
 Banawali,29.598889,75.392222,400,300,Early/Mature Harappan,"ASI national list N-HR-22 (Wikipedia), via web search",
 Bhirrana,29.55417,75.54861,300,300,Hakra/Early/Mature Harappan,"Wikipedia infobox, via web search",State protected S-HR-2
 Kunal,29.6217,75.6583,300,500,Hakra/Early Harappan,"Wikipedia infobox, via web search",State protected S-HR-3
-Siswal,29.21121,75.496373,300,500,Early Harappan (Sothi-Siswal),"Wikipedia infobox, via web search",mound 300 m N of village
+Siswal,29.21121,75.496373,300,800,Early Harappan (Sothi-Siswal),"Wikipedia infobox, via web search","mound 300 m N of village; coordinate is the village, so excluded from classifier training"
 Agroha mound,29.331667,75.619722,600,300,Early Historic,"ASI national list N-HR-27 (Wikipedia), via web search",
 "Asigarh Fort, Hansi",29.10528,75.96306,400,300,Historic fort on mound,"Wikipedia infobox, via web search",
 Rakhigarhi,29.2915,76.1137,1200,1000,Early/Mature Harappan,"Wikipedia infobox, via web search",multi-mound site
 Lohari Ragho,29.27472,76.07139,800,1000,Harappan,"Wikipedia infobox, via web search",3 mounds 1-1.5 km apart
 Balu,29.65,76.366,300,1000,Harappan,"Wikipedia infobox, via web search",
 Mitathal,28.89194,76.16972,300,1500,Mature/Late Harappan,"Wikipedia infobox, via web search",mound ~1.5 km NW of village; infobox may be the village
-Masudpur,29.228333,75.971389,1500,1500,Early/Mature/Late Harappan,"Wikipedia infobox, via web search","13 mounds MSD I-XIII (Cambridge LWS 2009); village-level point"
-Sisai,29.290833,76.003611,1000,1500,Harappan,"Wikipedia infobox, via web search","3 mounds Sisai 1-3; village-level point"
+Masudpur,29.228333,75.971389,1500,1500,Early/Mature/Late Harappan,"Wikipedia infobox, via web search",13 mounds MSD I-XIII (Cambridge LWS 2009); village-level point
+Sisai,29.290833,76.003611,1000,1500,Harappan,"Wikipedia infobox, via web search",3 mounds Sisai 1-3; village-level point
 Mirchpur,29.316111,76.175556,500,1500,Harappan,"Wikipedia infobox, via web search",village-level point
 Kheri Jalab,29.241050,76.134000,500,2000,Early Harappan,"indiamapia village geocode, via web search","Wikipedia gives 76.837 E, inconsistent with its description"
