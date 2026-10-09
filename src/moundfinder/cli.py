@@ -31,10 +31,38 @@ def cmd_export(args, cfg):
     pipeline.save_candidates(cands, run)
     export.write_csv(cands, run / "candidates.csv")
     short = export.shortlist(cands, args.top, args.include_known)
+    if not args.no_fetch:
+        _fetch_missing_chips(cfg, run, short, Path(args.cache))
+        # The fetched Sentinel-2 contrast feeds the score, so rank again.
+        scoring.score_all(cands, cfg["scoring"]["weights"])
+        pipeline.save_candidates(cands, run)
+        short = export.shortlist(cands, args.top, args.include_known)
     export.write_kml(short, run / "shortlist.kml")
     export.write_gpx(short, run / "shortlist.gpx")
     export.write_review_html(run, short, run / "review.html")
     print(f"wrote candidates.csv, shortlist.kml, shortlist.gpx, review.html ({len(short)} candidates) in {run}")
+
+
+def _fetch_missing_chips(cfg, run: Path, short: list[dict], cache: Path) -> None:
+    """Sentinel-2 contrast and a chip for shortlisted candidates the scan didn't enrich
+    (e.g. ones added by the pixel classifier)."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from .sentinel2 import SceneIndex, candidate_features
+
+    todo = [c for c in short if not (run / "chips" / f"{c['id']}_s2.png").exists()]
+    if not todo:
+        return
+    index = SceneIndex(cache)
+
+    def go(c):
+        try:
+            c.update(candidate_features(index, c, cfg["sentinel2"], run / "chips" / f"{c['id']}_s2.png"))
+        except Exception as e:
+            logging.getLogger("moundfinder").warning("%s: Sentinel-2 failed: %s", c["id"], e)
+
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        list(pool.map(go, todo))
 
 
 def cmd_calibrate(args, cfg):
@@ -103,6 +131,8 @@ def main(argv=None):
     e.add_argument("run")
     e.add_argument("--top", type=int, default=50)
     e.add_argument("--include-known", action="store_true", help="also list candidates on recorded sites")
+    e.add_argument("--no-fetch", action="store_true", help="don't download chips for shortlisted candidates")
+    e.add_argument("--cache", default="cache")
     e.set_defaults(func=cmd_export)
 
     c = sub.add_parser("calibrate", help="how well did the scan find recorded sites?")

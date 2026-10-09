@@ -62,9 +62,16 @@ def penalties(c: dict) -> tuple[float, list[str]]:
     if c.get("lc_built", 0) > 0.25:
         mult *= 0.3
         flags.append("village")
-    if c.get("lc_tree", 0) > 0.4:
+    if c.get("lc_tree", 0) > 0.25:
         mult *= 0.5
         flags.append("tree_canopy")
+    # Groves too small for WorldCover: greener and darker than their surroundings even
+    # in the April-May dry season, when a mound surface is bare and bright.
+    dn_in, dn_ring = c.get("dry_ndvi_in"), c.get("dry_ndvi_ring")
+    db_in, db_ring = c.get("dry_bright_in"), c.get("dry_bright_ring")
+    if None not in (dn_in, dn_ring, db_in, db_ring) and dn_in - dn_ring > 0.05 and db_in < db_ring:
+        mult *= 0.5
+        flags.append("green_clump")
     if c.get("lc_water", 0) > 0.2:
         mult *= 0.3
         flags.append("water")

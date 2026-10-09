@@ -38,7 +38,7 @@ sentinel2:
   years: [2023, 2024]
   max_scenes_per_season: 2
   # Scenes per season for the whole-tile composites used by the pixel classifier.
-  composite_scenes: 3
+  composite_scenes: 4
   max_cloud_pct: 20
   chip_radius_m: 600
 

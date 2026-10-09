@@ -77,3 +77,13 @@ def test_known_sites_csvs_are_well_formed():
         for r in rows[1:]:
             lat, lon = float(r[1]), float(r[2])
             assert 27 < lat < 31 and 72 < lon < 78, (path, r[0])
+
+
+def test_green_clump_penalised_and_bare_patch_not():
+    from moundfinder.scoring import penalties
+
+    base = {"elongation": 1.2, "relief_density": 0.05}
+    grove = dict(base, dry_ndvi_in=0.20, dry_ndvi_ring=0.10, dry_bright_in=0.15, dry_bright_ring=0.20)
+    mound = dict(base, dry_ndvi_in=0.14, dry_ndvi_ring=0.23, dry_bright_in=0.20, dry_bright_ring=0.15)
+    assert "green_clump" in penalties(grove)[1] and penalties(grove)[0] < 1
+    assert penalties(mound) == (1.0, [])
