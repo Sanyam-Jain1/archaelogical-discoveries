@@ -1,0 +1,47 @@
+# Default pipeline settings. Paths are relative to the repository root.
+
+aois: config/aois.geojson
+border: config/india_pakistan_border.geojson
+# Indian drone rules make the 25 km belt along the international border a red
+# zone, and BSF restricts movement close to it. Candidates inside this buffer are
+# dropped so every candidate is somewhere a civilian can legally go and look.
+border_buffer_km: 25
+
+known_sites:
+  - data/known_sites/seed_sites.csv
+# Extra margin (metres) added to each known site's radius when matching.
+known_site_margin_m: 300
+
+dem:
+  # White top-hat window. Features narrower than this keep their full height;
+  # broad landforms are removed. Harappan mounds here are mostly 100-500 m across.
+  tophat_window_m: 700
+  smooth_sigma_px: 1.0
+  min_relief_m: 1.5
+  min_area_ha: 0.5
+  max_area_ha: 80
+  # Window for "how much relief is around this blob" (dune-field indicator).
+  context_window_m: 2000
+
+landcover:
+  # ESA WorldCover 10 m (2021, v200), read from the public AWS bucket. Sampled
+  # over the candidate's footprint (equal-area circle), never less than this.
+  min_radius_m: 60
+
+sentinel2:
+  # Rabi crop peak: an uncultivated mound shows as a hole in green fields.
+  crop_season_months: [1, 2]
+  # Bare, dry season: mound soils (ash, pottery, salts) differ in brightness.
+  dry_season_months: [4, 5]
+  years: [2023, 2024]
+  max_scenes_per_season: 2
+  max_cloud_pct: 20
+  chip_radius_m: 600
+
+scoring:
+  weights:
+    relief: 0.30
+    shape: 0.20
+    isolation: 0.20
+    spectral: 0.20
+    size: 0.10

@@ -1,0 +1,9 @@
+name,lat,lon,radius_m,precision_m,period,source,notes
+Kalibangan,29.4729,74.1305,500,500,Early/Mature Harappan,Wikipedia coordinates,"Two mounds (KLB-1, KLB-2); confirmed as a ~9 m bump in Copernicus GLO-30"
+Rakhigarhi,29.2915,76.1137,1200,1000,Early/Mature Harappan,Wikipedia coordinates,"Multi-mound site, mounds RGR-1 to RGR-7"
+Banawali,29.5968,75.3929,400,1500,Early/Mature Harappan,Wikipedia coordinates (minute precision),verify
+Bhirrana,29.5547,75.5658,300,1500,Hakra/Early/Mature Harappan,Wikipedia coordinates (minute precision),verify
+Kunal,29.6436,75.6577,300,1500,Hakra/Early Harappan,Wikipedia coordinates (minute precision),verify
+Mitathal,28.8920,76.1690,300,1500,Mature/Late Harappan,Wikipedia coordinates (minute precision),verify
+Agroha,29.3330,75.6170,600,1000,Early Historic,Wikipedia coordinates (minute precision),"Large early-historic theh; useful mound for calibration"
+Binjor 4MSR,29.1800,73.1500,300,3000,Early/Mature Harappan,approximate from published description (5 km W of Anupgarh fort),inside border buffer; verify

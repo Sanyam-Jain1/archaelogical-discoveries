@@ -1,0 +1,41 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "thar_ghaggar_margin",
+        "role": "primary",
+        "description": "Thar desert margin of the Ghaggar-Hakra / Chautang system on the Indian side: southern Sri Ganganagar and Hanumangarh, northern Bikaner, northern Churu. The eastern continuation of Cholistan, where machine-learning survey found hundreds of unrecorded mounds. The international-border buffer is subtracted at runtime."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[73.20, 28.20], [75.40, 28.20], [75.40, 29.60], [73.20, 29.60], [73.20, 28.20]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "bikaner_churu_gap",
+        "role": "priority",
+        "description": "Dune-covered tract between the Ghaggar and the Sothi/Chautang line (Lunkaransar, Sardarshahar, Taranagar). Least systematically surveyed part of the primary AOI."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[73.40, 28.20], [75.20, 28.20], [75.20, 29.00], [73.40, 29.00], [73.40, 28.20]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "haryana_calibration",
+        "role": "calibration",
+        "description": "Ghaggar-Chautang plains of Haryana (Sirsa, Fatehabad, Hisar, Jind). Densely surveyed; used to tune the detector against known mounds before sweeping the primary AOI."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[74.40, 28.80], [76.40, 28.80], [76.40, 29.90], [74.40, 29.90], [74.40, 28.80]]]
+      }
+    }
+  ]
+}

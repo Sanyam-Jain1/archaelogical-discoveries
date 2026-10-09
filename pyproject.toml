@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moundfinder"
+version = "0.1.0"
+description = "Find candidate unrecorded settlement mounds in free satellite and elevation data"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "scipy",
+  "rasterio",
+  "shapely>=2",
+  "pyproj",
+  "pyyaml",
+  "mgrs",
+  "pillow",
+  "scikit-learn",
+]
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+moundfinder = "moundfinder.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
