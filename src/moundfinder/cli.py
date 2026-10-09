@@ -118,6 +118,91 @@ def cmd_spectral_predict(args, cfg):
     print(f"{len(cands)} candidates by source: {by}; run `export` for a new shortlist")
 
 
+def cmd_soi_index(args, cfg):
+    """Georeference every downloaded one-inch sheet and OCR it for mound terms."""
+    import json as _json
+    from concurrent.futures import ProcessPoolExecutor
+
+    from . import soi
+
+    raw = Path(args.maps)
+    files = sorted(p for p in raw.iterdir() if p.suffix.lower() in (".jpg", ".jpeg", ".tif", ".png"))
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    with ProcessPoolExecutor(max_workers=args.workers) as pool:
+        results = list(pool.map(_index_one, files, [args.no_ocr] * len(files)))
+    sheets, words = [], []
+    for name, sheet, ws, err in results:
+        if err:
+            print(f"skip {name}: {err}")
+            continue
+        sheets.append(sheet)
+        words += ws
+    soi.save_index(sheets, out / "sheets.json")
+    (out / "words.json").write_text(_json.dumps(words))
+    terms = [w for w in words if soi.MOUND_TERMS.search(w["text"])]
+    with open(out / "mound_terms.csv", "w", newline="") as f:
+        wtr = csv.DictWriter(f, fieldnames=["text", "lat", "lon", "conf", "sheet", "year"], extrasaction="ignore")
+        wtr.writeheader()
+        wtr.writerows(terms)
+    print(f"{len(sheets)} sheets georeferenced, {len(words)} words read, {len(terms)} mound terms -> {out}")
+
+
+def _index_one(path: Path, no_ocr: bool):
+    from . import soi
+
+    name = path.name.replace("_", " ")  # saved as 44_K_13_Hissar_District_(1914).jpg
+    try:
+        sheet, rgb, _ = soi.open_sheet(path, name)
+        words = [] if no_ocr else soi.ocr_words(sheet, rgb)
+        return name, sheet, words, None
+    except Exception as e:  # one bad scan should not stop the rest
+        return name, None, [], str(e)
+
+
+def cmd_soi_chips(args, cfg):
+    """Crop the old maps around shortlisted candidates and note nearby historical mound labels."""
+    import math as _math
+
+    from . import soi
+    from .geo import haversine_m
+
+    run = Path(args.run)
+    sheets = soi.load_index(Path(args.index) / "sheets.json")
+    terms = []
+    terms_path = Path(args.index) / "mound_terms.csv"
+    if terms_path.exists():
+        with open(terms_path, newline="") as f:
+            terms = [dict(r, lat=float(r["lat"]), lon=float(r["lon"])) for r in csv.DictReader(f)]
+    cands = pipeline.load_candidates(run)
+    short = export.shortlist(cands, args.top, args.include_known)
+    by_sheet = {}
+    for c in short:
+        # Earliest sheet covering the candidate.
+        cover = sorted((s for s in sheets if s.contains(c["lon"], c["lat"])), key=lambda s: s.year or 9999)
+        c["soi_sheet"] = cover[0].name if cover else None
+        c["soi_year"] = cover[0].year if cover else None
+        if cover:
+            by_sheet.setdefault(cover[0].name, []).append(c)
+        near = [(haversine_m(c["lat"], c["lon"], t["lat"], t["lon"]), t) for t in terms]
+        near = [x for x in near if x[0] <= args.label_radius_m]
+        c["soi_label"] = min(near, key=lambda x: x[0])[1]["text"] if near else ""
+        c["soi_label_dist_m"] = round(min(near, key=lambda x: x[0])[0]) if near else None
+    for name, group in by_sheet.items():
+        sheet = next(s for s in sheets if s.name == name)
+        rgb, _ = soi._load_gray(sheet.path)
+        for c in group:
+            img = soi.crop(sheet, rgb, c["summit_lon"], c["summit_lat"], half_m=args.half_m)
+            (run / "chips").mkdir(exist_ok=True)
+            img.save(run / "chips" / f"{c['id']}_soi.png")
+        del rgb
+    pipeline.save_candidates(cands, run)
+    covered = sum(1 for c in short if c.get("soi_sheet"))
+    labelled = sum(1 for c in short if c.get("soi_label"))
+    print(f"{covered}/{len(short)} shortlisted candidates on an old sheet; {labelled} within "
+          f"{args.label_radius_m} m of a historical mound label")
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(prog="moundfinder", description=__doc__)
     p.add_argument("--config", default="config/settings.yaml")
@@ -165,6 +250,22 @@ def main(argv=None):
     sp.add_argument("--tiles", nargs="*")
     sp.add_argument("--cache", default="cache")
     sp.set_defaults(func=cmd_spectral_predict)
+
+    si = sub.add_parser("soi-index", help="georeference and OCR the old Survey of India one-inch sheets")
+    si.add_argument("--maps", default="data/raw/soi")
+    si.add_argument("--out", default="runs/soi")
+    si.add_argument("--workers", type=int, default=3)
+    si.add_argument("--no-ocr", action="store_true")
+    si.set_defaults(func=cmd_soi_index)
+
+    sc = sub.add_parser("soi-chips", help="old-map crops and historical mound labels for a run's shortlist")
+    sc.add_argument("run")
+    sc.add_argument("--index", default="runs/soi")
+    sc.add_argument("--top", type=int, default=100)
+    sc.add_argument("--include-known", action="store_true")
+    sc.add_argument("--half-m", type=float, default=1000)
+    sc.add_argument("--label-radius-m", type=float, default=500)
+    sc.set_defaults(func=cmd_soi_chips)
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(asctime)s %(message)s")
