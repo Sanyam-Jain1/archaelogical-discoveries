@@ -32,11 +32,18 @@ def cmd_export(args, cfg):
     export.write_csv(cands, run / "candidates.csv")
     short = export.shortlist(cands, args.top, args.include_known)
     if not args.no_fetch:
+        # The fetched Sentinel-2 contrast feeds the score, so rank again; re-ranking can
+        # pull in candidates that still lack chips, so repeat until the list is stable.
+        for _ in range(3):
+            _fetch_missing_chips(cfg, run, short, Path(args.cache))
+            scoring.score_all(cands, cfg["scoring"]["weights"])
+            new_short = export.shortlist(cands, args.top, args.include_known)
+            stable = [c["id"] for c in new_short] == [c["id"] for c in short]
+            short = new_short
+            if stable:
+                break
         _fetch_missing_chips(cfg, run, short, Path(args.cache))
-        # The fetched Sentinel-2 contrast feeds the score, so rank again.
-        scoring.score_all(cands, cfg["scoring"]["weights"])
         pipeline.save_candidates(cands, run)
-        short = export.shortlist(cands, args.top, args.include_known)
     export.write_kml(short, run / "shortlist.kml")
     export.write_gpx(short, run / "shortlist.gpx")
     export.write_review_html(run, short, run / "review.html")

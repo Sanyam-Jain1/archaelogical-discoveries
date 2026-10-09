@@ -1,0 +1,319 @@
+<title>Theh Candidate Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Layout: a field register. Sticky tally bar, then one card per candidate in rank order;
+   one column on a phone, a two- or three-column grid on wider screens. */
+:root {
+  --bg: #eef0ec;          /* survey-sheet grey-green */
+  --surface: #fbfcfa;
+  --fg: #1d2421;
+  --muted: #5e6862;
+  --line: #d3d9d3;
+  --accent: #1f4e6b;      /* survey ink */
+  --site: #2d7a4b;
+  --not: #8b3a2f;
+  --unsure: #8a6a17;
+  --chip: #e2e7e2;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151a18; --surface: #1d2421; --fg: #e4e9e5; --muted: #9aa59f; --line: #34403a;
+    --accent: #8bbbd9; --site: #6cc28d; --not: #e08a7c; --unsure: #d9b75a; --chip: #2a332f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151a18; --surface: #1d2421; --fg: #e4e9e5; --muted: #9aa59f; --line: #34403a;
+  --accent: #8bbbd9; --site: #6cc28d; --not: #e08a7c; --unsure: #d9b75a; --chip: #2a332f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font: 15px/1.5 var(--font-body);
+  padding-inline: 16px; padding-block: 0 48px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+header.intro { padding-block: 20px 8px; display: grid; gap: 6px; }
+h1 { font: 600 1.6rem/1.15 var(--font-display); margin: 0; letter-spacing: .01em; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0; max-width: 62ch; }
+details.guide { margin-top: 6px; max-width: 70ch; }
+details.guide summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+details.guide ul { margin: 8px 0 0; padding-left: 1.2em; color: var(--muted); display: grid; gap: 4px; }
+details.guide b { color: var(--fg); font-weight: 500; }
+
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  padding-block: 10px; margin-bottom: 14px;
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
+}
+.tally { display: flex; gap: 12px; flex-wrap: wrap; font: 500 .85rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.tally span { white-space: nowrap; }
+.tally .k-site { color: var(--site); } .tally .k-not { color: var(--not); } .tally .k-unsure { color: var(--unsure); }
+.filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.filters button {
+  font: 500 .8rem var(--font-body); padding: 6px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer;
+}
+.filters button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.status { font-size: .8rem; color: var(--muted); width: 100%; }
+.status:empty { display: none; }
+
+.grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px; display: grid; gap: 10px; min-width: 0;
+  border-left: 4px solid var(--line);
+}
+.card[data-label="site"] { border-left-color: var(--site); }
+.card[data-label="not"] { border-left-color: var(--not); }
+.card[data-label="unsure"] { border-left-color: var(--unsure); }
+.head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rank { font: 600 1.15rem var(--font-display); }
+.cid { font: .78rem var(--font-mono); color: var(--muted); }
+.score { margin-left: auto; font: 500 .85rem var(--font-mono); color: var(--accent); font-variant-numeric: tabular-nums; }
+.imgs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+figure { margin: 0; min-width: 0; }
+figure img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; display: block; background: var(--chip); }
+figure .ph { width: 100%; aspect-ratio: 1; border-radius: 6px; background: var(--chip); display: grid; place-items: center; color: var(--muted); font-size: .75rem; }
+figcaption { font-size: .72rem; color: var(--muted); margin-top: 3px; }
+dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 10px; margin: 0; }
+dl div { min-width: 0; }
+dt { font-size: .68rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+dd { margin: 0; font: 500 .95rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.tag { font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: var(--chip); color: var(--muted); }
+.tag.src { color: var(--accent); }
+.where { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: .85rem; }
+.where a { color: var(--accent); font-weight: 500; }
+.coord { font: .78rem var(--font-mono); color: var(--muted); }
+.actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.actions button {
+  font: 500 .85rem var(--font-body); padding: 9px 4px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+}
+.actions button[data-v="site"][aria-pressed="true"] { background: var(--site); border-color: var(--site); color: var(--surface); }
+.actions button[data-v="not"][aria-pressed="true"] { background: var(--not); border-color: var(--not); color: var(--surface); }
+.actions button[data-v="unsure"][aria-pressed="true"] { background: var(--unsure); border-color: var(--unsure); color: var(--surface); }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.empty { color: var(--muted); padding: 24px 0; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: border-color .15s; } }
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <h1>Theh candidates, Thar–Ghaggar margin</h1>
+    <p class="lede">The top __COUNT__ bumps in run <span class="cid">__RUN__</span> that match no recorded site. Open each one in satellite view, judge it, and tap a label. Labels are saved for retraining the model.</p>
+    <details class="guide">
+      <summary>What to look for in satellite view</summary>
+      <ul>
+        <li><b>Likely a theh:</b> a low, rounded, unploughed rise, paler or greyer than the fields, often gullied by rain, with tracks or a shrine on it, and fields that bend around it.</li>
+        <li><b>Village:</b> roofs, lanes and courtyards. Old villages often sit on a mound, but those are rarely unrecorded. Mark them not a site unless there is bare mound beyond the houses.</li>
+        <li><b>Brick kiln:</b> an oval trench, a tall chimney and its shadow, stacks of red brick.</li>
+        <li><b>Dune:</b> sand with ripples, elongated in line with its neighbours.</li>
+        <li><b>Tank or pond:</b> water or a dry hollow ringed by an embankment.</li>
+        <li><b>Spoil heap or grove:</b> fresh tipped earth with tracks, or a clump of trees.</li>
+      </ul>
+    </details>
+  </header>
+
+  <div class="bar">
+    <div class="tally" aria-live="polite">
+      <span id="t-done">0 / __COUNT__ labelled</span>
+      <span class="k-site" id="t-site">0 site</span>
+      <span class="k-not" id="t-not">0 not</span>
+      <span class="k-unsure" id="t-unsure">0 unsure</span>
+    </div>
+    <div class="filters" role="group" aria-label="Show">
+      <button type="button" data-f="all" aria-pressed="true">All</button>
+      <button type="button" data-f="todo" aria-pressed="false">To label</button>
+      <button type="button" data-f="site" aria-pressed="false">Site</button>
+      <button type="button" data-f="not" aria-pressed="false">Not</button>
+      <button type="button" data-f="unsure" aria-pressed="false">Unsure</button>
+    </div>
+    <div class="status" id="status"></div>
+  </div>
+
+  <main class="grid" id="grid"></main>
+  <p class="empty" id="empty" hidden>No candidates under this filter.</p>
+</div>
+
+<script>
+const CARDS = /*__CARDS__*/[];
+const FLAG_TEXT = /*__FLAGS__*/{};
+const LABEL_TEXT = { site: "Site", not: "Not a site", unsure: "Unsure" };
+const labels = {};        // candidate id -> "site" | "not" | "unsure"
+let filter = "all";
+let db = null;            // the artifact's database, once available
+let canSave = true;
+const pending = new Map(); // id -> latest label waiting to be written
+
+const grid = document.getElementById("grid");
+const statusEl = document.getElementById("status");
+
+function fmt(n, d) { return n === null || n === undefined ? "–" : Number(n).toFixed(d); }
+
+function cardEl(c) {
+  const el = document.createElement("article");
+  el.className = "card";
+  el.dataset.id = c.id;
+  const head = document.createElement("div");
+  head.className = "head";
+  head.innerHTML = `<span class="rank">#${c.rank}</span><span class="cid"></span><span class="score" title="Combined score, 0–1">${fmt(c.score, 2)}</span>`;
+  head.querySelector(".cid").textContent = c.id;
+
+  const imgs = document.createElement("div");
+  imgs.className = "imgs";
+  for (const [src, cap] of [[c.s2, "Sentinel-2, Apr–May"], [c.relief, "Height above surroundings, 0–6 m"]]) {
+    const fig = document.createElement("figure");
+    if (src) {
+      const img = document.createElement("img");
+      img.src = src; img.alt = cap; img.loading = "lazy"; img.width = 200; img.height = 200;
+      fig.appendChild(img);
+    } else {
+      const ph = document.createElement("div"); ph.className = "ph"; ph.textContent = "No image"; fig.appendChild(ph);
+    }
+    const fc = document.createElement("figcaption"); fc.textContent = cap; fig.appendChild(fc);
+    imgs.appendChild(fig);
+  }
+
+  const dl = document.createElement("dl");
+  dl.innerHTML = `<div><dt>Height</dt><dd>${fmt(c.height, 1)} m</dd></div>
+    <div><dt>Area</dt><dd>${fmt(c.area, 1)} ha</dd></div>
+    <div><dt>Surface p</dt><dd>${fmt(c.p, 2)}</dd></div>`;
+
+  const tags = document.createElement("div");
+  tags.className = "tags";
+  const src = document.createElement("span");
+  src.className = "tag src";
+  src.textContent = { both: "Height + surface", dem: "Height only", spectral: "Surface only" }[c.source] || c.source;
+  tags.appendChild(src);
+  for (const f of c.flags) {
+    const t = document.createElement("span"); t.className = "tag"; t.textContent = FLAG_TEXT[f] || f; tags.appendChild(t);
+  }
+
+  const where = document.createElement("div");
+  where.className = "where";
+  const a = document.createElement("a");
+  a.href = c.sat; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Satellite view ↗";
+  const coord = document.createElement("span");
+  coord.className = "coord"; coord.textContent = `${c.lat.toFixed(5)}, ${c.lon.toFixed(5)}`;
+  where.append(a, coord);
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  actions.setAttribute("role", "group");
+  actions.setAttribute("aria-label", `Label candidate ${c.rank}`);
+  for (const v of ["site", "not", "unsure"]) {
+    const b = document.createElement("button");
+    b.type = "button"; b.dataset.v = v; b.textContent = LABEL_TEXT[v]; b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => setLabel(c.id, labels[c.id] === v ? null : v));
+    actions.appendChild(b);
+  }
+
+  el.append(head, imgs, dl, tags, where, actions);
+  return el;
+}
+
+const els = new Map(CARDS.map(c => [c.id, cardEl(c)]));
+for (const el of els.values()) grid.appendChild(el);
+
+function paint() {
+  let done = 0; const n = { site: 0, not: 0, unsure: 0 };
+  for (const c of CARDS) {
+    const el = els.get(c.id);
+    const v = labels[c.id] || "";
+    el.dataset.label = v;
+    for (const b of el.querySelectorAll(".actions button")) b.setAttribute("aria-pressed", String(b.dataset.v === v));
+    if (v) { done++; n[v]++; }
+    el.hidden = !(filter === "all" || (filter === "todo" ? !v : v === filter));
+  }
+  document.getElementById("t-done").textContent = `${done} / ${CARDS.length} labelled`;
+  document.getElementById("t-site").textContent = `${n.site} site`;
+  document.getElementById("t-not").textContent = `${n.not} not`;
+  document.getElementById("t-unsure").textContent = `${n.unsure} unsure`;
+  document.getElementById("empty").hidden = CARDS.some(c => !els.get(c.id).hidden);
+}
+
+for (const b of document.querySelectorAll(".filters button")) {
+  b.addEventListener("click", () => {
+    filter = b.dataset.f;
+    for (const o of document.querySelectorAll(".filters button")) o.setAttribute("aria-pressed", String(o === b));
+    paint();
+  });
+}
+
+// Per-browser backup, so a label survives even where the database is unavailable.
+function saveLocal() { try { localStorage.setItem("theh-labels", JSON.stringify(labels)); } catch (e) {} }
+function loadLocal() { try { return JSON.parse(localStorage.getItem("theh-labels") || "{}"); } catch (e) { return {}; } }
+
+function setLabel(id, v) {
+  if (v) labels[id] = v; else delete labels[id];
+  saveLocal();
+  paint();
+  if (db && canSave) queueWrite(id, v);
+}
+
+// One write at a time per candidate; the latest tap wins.
+async function queueWrite(id, v) {
+  const busy = pending.has(id);
+  pending.set(id, v);
+  if (busy) return;
+  while (pending.has(id)) {
+    const want = pending.get(id);
+    try {
+      const ref = db.doc("labels/" + id);
+      if (want) await ref.set({ label: want, at: new Date().toISOString() });
+      else await ref.delete();
+      if (pending.get(id) === want) pending.delete(id);
+      statusEl.textContent = "";
+    } catch (e) {
+      pending.delete(id);
+      if (e && e.code === "invalid_argument") {
+        canSave = false;
+        statusEl.textContent = "You can view this page but not save labels to it. Labels stay in this browser only.";
+      } else if (e && e.code === "quota_exceeded") {
+        statusEl.textContent = "The label store is full. New labels stay in this browser only.";
+      } else {
+        statusEl.textContent = "A label didn't save. It is kept in this browser; tap it again to retry.";
+      }
+      return;
+    }
+  }
+}
+
+Object.assign(labels, loadLocal());
+paint();
+
+(async () => {
+  try { db = await window.claude?.use("db"); } catch (e) { db = null; }
+  if (!db) {
+    statusEl.textContent = "Labels are kept in this browser only in this view.";
+    return;
+  }
+  let synced = false;
+  db.collection("labels").onSnapshot(snap => {
+    const fromStore = {};
+    for (const d of snap.docs) { const v = d.data()?.label; if (v === "site" || v === "not" || v === "unsure") fromStore[d.id] = v; }
+    if (!synced && !snap.metadata.fromCache) {
+      // First definitive read: upload labels this browser made while offline.
+      synced = true;
+      for (const [id, v] of Object.entries(labels)) if (!(id in fromStore) && els.has(id)) queueWrite(id, v);
+    } else if (synced) {
+      // After that the store is the record (another device may have cleared a label).
+      for (const id of Object.keys(labels)) if (!(id in fromStore) && !pending.has(id)) delete labels[id];
+    }
+    Object.assign(labels, fromStore);
+    for (const [id, v] of pending) { if (v) labels[id] = v; else delete labels[id]; }
+    saveLocal();
+    paint();
+  }, err => {
+    statusEl.textContent = "Lost connection to the label store. Labels made now stay in this browser.";
+    db = null;
+  });
+})();
+</script>

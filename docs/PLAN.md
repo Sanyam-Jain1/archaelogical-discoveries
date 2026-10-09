@@ -64,7 +64,7 @@ This is the step the original idea is built on: old imagery shows the ground bef
 
 ## Phase 5: Review (ongoing)
 
-- [ ] Open `runs/<run>/review.html` and check each candidate against the satellite view. Mark it in `labels.csv` (`id,label`, with 1 = looks like a site, 0 = not).
+- [ ] Review the top 100 on the phone-friendly label page (`python scripts/build_label_page.py runs/thar`, published as a private Artifact). Each card has the chips, the numbers, a high-resolution satellite link and Site / Not / Unsure buttons, and labels are saved to the page's private store. Claude reads them back into `labels.csv` (`id,label`, 1 = site, 0 = not) for `moundfinder train`. `runs/<run>/review.html` is the desktop version without labelling.
 - [ ] Common false positives and how they look:
   - **Village:** roofs, lanes, a tank. The pipeline flags it with WorldCover.
   - **Brick kiln:** an oval trench, a chimney shadow, red-brown spoil.
