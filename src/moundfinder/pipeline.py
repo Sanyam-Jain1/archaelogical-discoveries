@@ -220,7 +220,8 @@ def spectral_train(cfg: dict, tiles: list[str], model_path: Path, cache_dir: Pat
         names, feats = spectral.tile_features(bounds, elev.shape, transform, relief, cfg["sentinel2"], cache_dir)
         built = spectral.builtup_fraction(lc, elev.shape, transform)
         X, y, g = spectral.sample_training(feats, transform, known, built, rng,
-                                           n_negative=cfg["spectral"]["negatives_per_tile"])
+                                           n_negative=cfg["spectral"]["negatives_per_tile"],
+                                           pos_radius_m=cfg["spectral"]["positive_radius_m"])
         log.info("%s: %d positive pixels from %d sites, %d negatives", tile, int(y.sum()),
                  len({a for a, b in zip(g, y) if b}), int((y == 0).sum()))
         Xs.append(X), ys.append(y), gs.append(g)

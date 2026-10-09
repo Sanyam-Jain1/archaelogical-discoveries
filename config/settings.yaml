@@ -48,6 +48,9 @@ spectral:
   # A spectral patch within this distance of a DEM candidate is merged into it.
   merge_distance_m: 150
   negatives_per_tile: 20000
+  # Pixels within this distance of a recorded site's point are training positives.
+  # Most mounds here are 1-2 ha (60-80 m radius); wider pulls in the fields around them.
+  positive_radius_m: 80
 
 scoring:
   weights:
