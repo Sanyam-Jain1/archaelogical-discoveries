@@ -136,7 +136,7 @@ What this means:
 ## Full-area run (2026-10-09)
 
 - **Scan** of all six tiles (about 25,000 km² outside the border belt): 21,615 elevation candidates. Recorded mounds in open ground rank at the very top: Banawali 1st, Bhannar Theri 9th, Kalibangan 11th, Baror 17th. **None of the top 100 elevation candidates are in the southern dune tiles (28–29° N)**, which confirms the dune blind spot.
-- **Pixel classifier** added 807 candidates of its own and scored the rest, giving 22,422 in total. Of the top 100 new ones, 62 are found by both detectors and 36 by the classifier alone.
+- **Pixel classifier** added 807 candidates of its own and scored the rest, giving 22,422 in total. With radar added later, it gives 22,904 (2,145 found by both detectors, 1,289 by the classifier alone). Of the top 100 new ones, 62 are found by both detectors and 36 by the classifier alone.
 - **Shortlist** (`runs/thar/review.html`, `shortlist.kml/.gpx`): a first look at 10 m resolution sorts it into three groups:
   - compact bare bumps in cultivated land: promising;
   - large pale, speckled patches: at 10 m an unploughed mound and a village of pale-roofed houses look the same;
@@ -154,7 +154,9 @@ What this means:
 |---|---|---|---|---|
 | 45 known sites, 150 m labels | 32 | 82% | 13 | 4 |
 | 45 known sites, 80 m labels | 32 | 88% | 15 | 6 |
-| **182 known sites, 80 m labels, dune background added** | **112** | **85%** | **43** | **6** |
+| 182 known sites, 80 m labels, dune background added | 112 | 85% | 43 | 6 |
+| **… plus Sentinel-1 radar** (same 112 sites) | **112** | **89%** | **51** | **8** |
+| … plus Sentinel-1 radar (all sites it could test) | 163 | 90% | 80 | 8 |
 
 The classifier is a useful filter, not a detector on its own. At pixel level, 15% of background still outranks the median site. It works best combined with relief and shape, which is what the score does: classifier probability is half the weight.
 
@@ -163,10 +165,11 @@ What we learned along the way:
 - **Label width matters.** Most mounds here are 1–2 ha, so 80 m labels beat 150 m ones.
 - **Unseen terrain fools it.** With no open-dune background in training, it fired on 1.5% of the Lunkaransar tile (87% of that on bare sand). Adding that tile as background cut its candidates there from 3,587 to 15.
 - **Composites need full-coverage scenes.** A tile is imaged by two orbits, and composites built from scenes of one orbit left 12–37% of four edge tiles empty. Scenes are now ranked by cloud plus missing data.
+- **Radar helps, modestly.** A year of Sentinel-1 passes (40 ascending frames per tile; median VV and VH backscatter, their difference, and the spread of VV) raised the held-out median from 85% to 89% on the same sites. It was better on 63 sites and worse on 47. VH backscatter is now the second most useful feature after relief. Over the whole area, the radar model brought 150 recorded sites into the candidate list (up from 120) and 60 into the top 100 (up from 52). Those sites were in its training data, so this second check flatters it, and the held-out table is the fair one.
 - **The most useful features** are blue reflectance and the bare-soil index in both seasons, plus relief. That fits the idea that mound soils differ from field soils.
 
 ## Known limits
 
 - **A 30 m DEM misses small sites.** Mounds under about 1.5 m tall or about 80 m across are invisible to the DEM stage. The historical maps and the spectral evidence have to catch those, which is Phase 4 work.
 - **The heuristic score is hand-tuned.** It works in open plains (see above) but needs the classifier and labels before it can be trusted in dunes.
-- **Sentinel-1 radar isn't used yet.** It was one of the two sensors in Orengo et al. and is worth adding for the dune tract.
+- **A few recorded sites still look like their surroundings** even with radar (Mathula, Dabli Chugta, Jhansal‐III below 30%). Field labels from Phase 5 are the way to teach it those.
