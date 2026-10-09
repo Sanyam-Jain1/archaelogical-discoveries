@@ -21,7 +21,7 @@ COP30_BASE = "https://copernicus-dem-30m.s3.amazonaws.com"
 
 # Avoid GDAL listing S3 "directories" on every open.
 os.environ.setdefault("GDAL_DISABLE_READDIR_ON_OPEN", "EMPTY_DIR")
-os.environ.setdefault("CPL_VSIL_CURL_ALLOWED_EXTENSIONS", ".tif")
+os.environ.setdefault("CPL_VSIL_CURL_ALLOWED_EXTENSIONS", ".tif,.tiff")
 
 
 def cop30_url(tile: str) -> str:
