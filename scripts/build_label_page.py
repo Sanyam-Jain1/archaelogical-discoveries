@@ -60,6 +60,10 @@ def card_data(run: Path, cands: list[dict]) -> list[dict]:
             "sat": satellite_link(lat, lon),
             "s2": chip(run / "chips" / f"{c['id']}_s2.png"),
             "relief": chip(run / "chips" / f"{c['id']}_relief.png"),
+            "oldmap": chip(run / "chips" / f"{c['id']}_soi.png", size=260),
+            "oldyear": c.get("soi_year"),
+            "oldlabel": c.get("soi_label") or "",
+            "oldlabel_m": c.get("soi_label_dist_m"),
         })
     return out
 

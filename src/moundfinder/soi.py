@@ -216,24 +216,27 @@ def ocr_words(sheet: Sheet, rgb: np.ndarray, scale: float = 3.0, tile: int = 900
     xs, ys_ = zip(*sheet.corners)
     xw, xe, yn, ys = int(min(xs)), int(max(xs)), int(min(ys_)), int(max(ys_))
     seen = {}
-    for ty in range(yn, ys, tile - overlap):
-        for tx in range(xw, xe, tile - overlap):
-            t = clean[ty:min(ty + tile, ys), tx:min(tx + tile, xe)]
-            t = cv2.resize(t, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-            t = cv2.threshold(t, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
-            d = pytesseract.image_to_data(t, config="--psm 11", output_type=pytesseract.Output.DICT)
-            for i, txt in enumerate(d["text"]):
-                txt = txt.strip()
-                if len(txt) < 3 or float(d["conf"][i]) < 45 or sum(ch.isalpha() for ch in txt) < 3:
-                    continue
-                x = tx + (d["left"][i] + d["width"][i] / 2) / scale
-                y = ty + (d["top"][i] + d["height"][i] / 2) / scale
-                key = (txt.lower(), round(x / 60), round(y / 60))  # de-duplicate tile overlaps
-                if key in seen:
-                    continue
-                lon, lat = sheet.to_lonlat(x, y)
-                seen[key] = {"text": txt, "lon": round(lon, 6), "lat": round(lat, 6), "conf": float(d["conf"][i]),
-                             "sheet": sheet.name, "year": sheet.year}
+    # Two tile grids offset by half a tile: a label cut by one grid's edge is whole in the other.
+    starts = [(ty, tx) for ty in range(yn, ys, tile - overlap) for tx in range(xw, xe, tile - overlap)]
+    half = tile // 2
+    starts += [(ty, tx) for ty in range(yn + half, ys, tile - overlap) for tx in range(xw + half, xe, tile - overlap)]
+    for ty, tx in starts:
+        t = clean[ty:min(ty + tile, ys), tx:min(tx + tile, xe)]
+        t = cv2.resize(t, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
+        t = cv2.threshold(t, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+        d = pytesseract.image_to_data(t, config="--psm 11", output_type=pytesseract.Output.DICT)
+        for i, txt in enumerate(d["text"]):
+            txt = txt.strip()
+            if len(txt) < 3 or float(d["conf"][i]) < 45 or sum(ch.isalpha() for ch in txt) < 3:
+                continue
+            x = tx + (d["left"][i] + d["width"][i] / 2) / scale
+            y = ty + (d["top"][i] + d["height"][i] / 2) / scale
+            key = (txt.lower(), round(x / 60), round(y / 60))  # de-duplicate tile overlaps
+            if key in seen:
+                continue
+            lon, lat = sheet.to_lonlat(x, y)
+            seen[key] = {"text": txt, "lon": round(lon, 6), "lat": round(lat, 6), "conf": float(d["conf"][i]),
+                         "sheet": sheet.name, "year": sheet.year}
     return list(seen.values())
 
 
