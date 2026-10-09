@@ -111,7 +111,7 @@ def _nan_local_mean(img: np.ndarray, size: int) -> np.ndarray:
 
 
 def tile_features(bounds, shape, transform, relief: np.ndarray, cfg: dict, cache_dir: Path,
-                  index: SceneIndex | None = None) -> tuple[list[str], np.ndarray]:
+                  index: SceneIndex | None = None, s1_cfg: dict | None = None) -> tuple[list[str], np.ndarray]:
     """Feature stack (F, H, W) on the DEM grid of a 1-degree tile."""
     index = index or SceneIndex(cache_dir)
     mgrs_ids = mgrs_tiles_for(bounds)
@@ -150,6 +150,16 @@ def tile_features(bounds, shape, transform, relief: np.ndarray, cfg: dict, cache
                 layers.append(img)
             names.append(f"{season}_{name}_contrast")
             layers.append(img - _nan_local_mean(img, nbhd))
+    if s1_cfg and s1_cfg.get("enabled"):
+        from . import sentinel1
+
+        s1 = sentinel1.tile_layers(bounds, shape, transform, s1_cfg, cache_dir)
+        for name in sentinel1.LAYERS:
+            names.append(name)
+            layers.append(s1[name])
+        for name in ("s1_vv", "s1_vh"):
+            names.append(f"{name}_contrast")
+            layers.append(s1[name] - _nan_local_mean(s1[name], nbhd))
     names.append("relief")
     layers.append(relief.astype(np.float32))
     return names, np.stack(layers).astype(np.float32)

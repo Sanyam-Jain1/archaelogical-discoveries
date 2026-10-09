@@ -42,6 +42,15 @@ sentinel2:
   max_cloud_pct: 20
   chip_radius_m: 600
 
+sentinel1:
+  # Radar backscatter (Planetary Computer RTC, ascending passes) as extra classifier
+  # features: median VV and VH, their difference, VV's spread over the year, and
+  # VV/VH contrast with the surroundings. Changing this means retraining.
+  enabled: true
+  start: "2023-11-01"
+  end: "2024-10-31"
+  max_items: 40
+
 spectral:
   # Pixel classifier (spectral.py): candidates are patches with probability >= threshold.
   threshold: 0.5

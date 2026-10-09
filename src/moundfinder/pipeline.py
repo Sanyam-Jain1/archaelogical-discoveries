@@ -217,7 +217,8 @@ def spectral_train(cfg: dict, tiles: list[str], model_path: Path, cache_dir: Pat
     for tile in tiles:
         log.info("%s: building features", tile)
         bounds, elev, transform, relief, _, lc = tile_inputs(cfg, tile, cache_dir)
-        names, feats = spectral.tile_features(bounds, elev.shape, transform, relief, cfg["sentinel2"], cache_dir)
+        names, feats = spectral.tile_features(bounds, elev.shape, transform, relief, cfg["sentinel2"], cache_dir,
+                                              s1_cfg=cfg.get("sentinel1"))
         built = spectral.builtup_fraction(lc, elev.shape, transform)
         X, y, g = spectral.sample_training(feats, transform, known, built, rng,
                                            n_negative=cfg["spectral"]["negatives_per_tile"],
@@ -244,7 +245,8 @@ def spectral_predict(cfg: dict, run_dir: Path, model_path: Path, aoi_name: str, 
     for tile in tiles:
         log.info("%s: predicting", tile)
         bounds, elev, transform, relief, density, lc = tile_inputs(cfg, tile, cache_dir)
-        names, feats = spectral.tile_features(bounds, elev.shape, transform, relief, cfg["sentinel2"], cache_dir)
+        names, feats = spectral.tile_features(bounds, elev.shape, transform, relief, cfg["sentinel2"], cache_dir,
+                                              s1_cfg=cfg.get("sentinel1"))
         prob = spectral.predict(model, names, feats)
         del feats
         _save_float(prob, transform, run_dir / f"prob_{tile}.tif")
