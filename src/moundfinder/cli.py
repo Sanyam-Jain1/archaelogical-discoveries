@@ -174,6 +174,36 @@ def _index_one(path: Path, no_ocr: bool, cache: Path):
         return name, None, [], str(e)
 
 
+def cmd_soi_leads(args, cfg):
+    """List old-map mound labels, marking those with no recorded site nearby."""
+    from . import soi
+    from .knownsites import load_known_sites
+
+    index = Path(args.index)
+    if (index / "words.json").exists():
+        words = json.loads((index / "words.json").read_text())
+    else:  # an unfinished index: use the sheets read so far
+        words = [w for f in sorted((index / "sheets").glob("*.json")) for w in json.loads(f.read_text())]
+    phrases = soi.label_phrases(words)
+    cands = sorted(pipeline.load_candidates(Path(args.run)), key=lambda c: -c["score"]) if args.run else []
+    known = load_known_sites(cfg["known_sites"])
+    leads = soi.historical_leads(phrases, known, cands, cfg["known_site_margin_m"], args.candidate_radius_m)
+    order = {"mound": 0, "ruins": 1, "name": 2}
+    leads.sort(key=lambda r: (bool(r["known_site"]), order[r["kind"]], r["candidate_rank"] or 10**9))
+    fields = ["label", "kind", "lat", "lon", "sheet", "year", "conf", "known_site", "known_site_dist_m",
+              "candidate", "candidate_rank", "candidate_dist_m"]
+    with open(index / "leads.csv", "w", newline="") as f:
+        wtr = csv.DictWriter(f, fieldnames=fields, extrasaction="ignore")
+        wtr.writeheader()
+        wtr.writerows(leads)
+    new = [r for r in leads if not r["known_site"]]
+    print(f"{len(words)} words, {len(leads)} mound labels, {len(new)} with no recorded site nearby "
+          f"({sum(r['kind'] == 'mound' for r in new)} mound terms, {sum(r['kind'] == 'ruins' for r in new)} "
+          f"deserted settlements, {sum(r['kind'] == 'name' for r in new)} place names; "
+          f"{sum(1 for r in new if r['candidate'])} have a scan candidate within {args.candidate_radius_m:.0f} m) "
+          f"-> {index / 'leads.csv'}")
+
+
 def cmd_soi_chips(args, cfg):
     """Crop the old maps around shortlisted candidates and note nearby historical mound labels."""
     import math as _math
@@ -280,6 +310,12 @@ def main(argv=None):
     sc.add_argument("--half-m", type=float, default=1000)
     sc.add_argument("--label-radius-m", type=float, default=500)
     sc.set_defaults(func=cmd_soi_chips)
+
+    sl = sub.add_parser("soi-leads", help="old-map mound labels with no recorded site nearby")
+    sl.add_argument("--index", default="runs/soi")
+    sl.add_argument("--run", help="a scan run, to note the nearest candidate and its rank")
+    sl.add_argument("--candidate-radius-m", type=float, default=500)
+    sl.set_defaults(func=cmd_soi_leads)
 
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING, format="%(asctime)s %(message)s")

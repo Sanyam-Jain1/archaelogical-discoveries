@@ -280,6 +280,54 @@ def load_index(path: Path) -> list[Sheet]:
             for d in json.loads(path.read_text())]
 
 
+# What a label says about the ground:
+#   mound - "theh", "dheri", "mound", "old site": a mound was drawn or named there;
+#   ruins - "(In ruins)" beside a hamlet symbol: a settlement already deserted when
+#           surveyed. Some stand on old mounds, most are recent;
+#   name  - "khera", "kot" in a village name: a village on or by its old mound.
+MOUND_LABEL = re.compile(r"\b(theh|thehr?i|dheri|mound|old\s*site)\b", re.I)
+RUINS_LABEL = re.compile(r"\bru[il]n?s?\b|\bruias\b", re.I)
+
+
+def label_kind(label: str) -> str:
+    if MOUND_LABEL.search(label):
+        return "mound"
+    if RUINS_LABEL.search(label):
+        return "ruins"
+    return "name"
+
+
+def historical_leads(phrases: list[dict], known, cands: list[dict], margin_m: float,
+                     cand_radius_m: float = 500) -> list[dict]:
+    """Old-map mound labels, each with the recorded site and the scan candidate nearest to it.
+
+    A label with no recorded site nearby is a historical lead: someone drew or
+    named a mound there a century ago. `cands` should be sorted best first, so
+    the candidate's position in it is its rank.
+    """
+    from .geo import haversine_m
+    from .knownsites import match
+
+    out = []
+    for ph in phrases:
+        site, d_site = match(ph["lat"], ph["lon"], known, margin_m)
+        near = None
+        for rank, c in enumerate(cands, 1):
+            if abs(c["lat"] - ph["lat"]) > 0.01 or abs(c["lon"] - ph["lon"]) > 0.01:
+                continue
+            d = haversine_m(ph["lat"], ph["lon"], c["lat"], c["lon"])
+            if d <= cand_radius_m and (near is None or d < near[0]):
+                near = (d, rank, c)
+        out.append(dict(ph,
+                        kind=label_kind(ph["label"]),
+                        known_site=site.name if site else "",
+                        known_site_dist_m=round(d_site) if site else None,
+                        candidate=near[2]["id"] if near else "",
+                        candidate_rank=near[1] if near else None,
+                        candidate_dist_m=round(near[0]) if near else None))
+    return out
+
+
 def label_phrases(words: list[dict], terms: re.Pattern = MOUND_TERMS, reach_m: float = 450) -> list[dict]:
     """Group each mound-term word with the words printed beside it on the same line.
 

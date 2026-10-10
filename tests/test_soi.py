@@ -66,3 +66,25 @@ def test_label_phrases_join_name_and_term_on_one_line():
     out = label_phrases(words)
     assert len(out) == 1
     assert out[0]["label"] == "Kalibangan (ruins)"
+
+
+def test_label_kinds():
+    from moundfinder.soi import label_kind
+
+    assert label_kind("Kala Theh") == "mound"
+    assert label_kind("(In ruins)") == "ruins"
+    assert label_kind("ruins) ruins).") == "ruins"
+    assert label_kind("Asa Khera") == "name"
+
+
+def test_historical_leads_marks_recorded_sites_and_candidates():
+    from moundfinder.knownsites import KnownSite
+    from moundfinder.soi import historical_leads
+
+    phrases = [{"label": "Kala Theh", "lat": 29.4730, "lon": 74.1300, "sheet": "44 K 03", "year": 1959, "conf": 90},
+               {"label": "(In ruins)", "lat": 29.3000, "lon": 74.2000, "sheet": "44 K 03", "year": 1959, "conf": 90}]
+    known = [KnownSite("Kalibangan", 29.4740, 74.1310, 300, 100, "test")]
+    cands = [{"id": "a", "lat": 29.0, "lon": 74.0}, {"id": "b", "lat": 29.3010, "lon": 74.2005}]
+    out = historical_leads(phrases, known, cands, margin_m=300)
+    assert out[0]["known_site"] == "Kalibangan" and out[0]["kind"] == "mound"
+    assert out[1]["known_site"] == "" and out[1]["candidate"] == "b" and out[1]["candidate_rank"] == 2
