@@ -58,9 +58,13 @@ The sweep covers six 1° tiles (~25,000 km² after the border buffer). The scan 
 
 This is the step the original idea is built on: old imagery shows the ground before tractors and canals reached it.
 
-- [ ] **Survey of India 1-inch maps (1910s–40s).** Download the sheets covering the top candidates from the [Zenodo collection](https://zenodo.org/communities/old-survey-of-india-maps/about). Mounds were drawn as hachured or spot-height features, sometimes labelled *theh* or *ruins*. Green et al. 2019 showed these correlate with old sites.
+- [x] **Survey of India 1-inch maps (1913–1986).** 62 sheets from the [Zenodo collection](https://zenodo.org/communities/old-survey-of-india-maps/about) are in `data/raw/soi/`. `moundfinder soi-index` georeferences each one from its printed frame and reads its text with Tesseract. `soi-chips` crops the earliest sheet around each shortlisted candidate for the review page, and `soi-leads` lists mound labels with no recorded site nearby.
+  - 52 of the top 100 candidates fall on a sheet. Sheets 44 G/7, 8, 10, 11, 15 and K/2, 4, 7, 8, 10 are only on Zenodo as modern 2012 renders, so their candidates have no old map.
+  - Reading the crops: most candidates sit on blank ground, but a few sit beside a hachured hill, a spot height, or a place name like *Theri Gang…* (*theri*, as in Bhannar Theri, means a mound).
+  - **"(In ruins)" means a deserted hamlet, not a mound.** The 1959 Ganganagar sheet (K/3) has about 20 of them, each beside the hamlet symbol. Kalibangan itself is "Kāla Theh", with the deserted village of Kalibangan "(In ruins)" next to it. They are leads worth a look, but most are probably recent.
+  - The OCR is slow: Tesseract takes 10–90 s per tile, and a dune-country sheet takes 20–60 minutes. 23 of 59 sheets are read (2026-10-10). `soi-index --fast` resumes where it stopped.
 - [ ] **CORONA KH-4 (1960–72) and HEXAGON KH-9.** Get these from USGS EarthExplorer (free account). Use them on the top ~50 candidates and on the irrigated parts of the Indira Gandhi Canal command, where mounds may already have been levelled.
-- [ ] **To build next in this repo:** a georeferencing tool (control points matched to Sentinel-2, then a polynomial warp) and a mound-symbol extractor for the 1-inch maps, following Berganzo-Besga et al. 2023. Use the scores to add `historical_evidence` to each candidate.
+- [ ] **Mound symbols.** The maps draw small mounds as hachures or closed form lines, often with no label. A symbol detector, following Berganzo-Besga et al. 2023, would catch those.
 
 ## Phase 5: Review (ongoing)
 
