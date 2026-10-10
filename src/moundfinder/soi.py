@@ -211,7 +211,7 @@ def clean_for_ocr(rgb: np.ndarray) -> np.ndarray:
 
 
 def ocr_words(sheet: Sheet, rgb: np.ndarray, scale: float = 3.0, tile: int = 900, overlap: int = 150,
-              tile_timeout_s: int = 90) -> list[dict]:
+              tile_timeout_s: int = 90, two_grids: bool = True) -> list[dict]:
     """Every word Tesseract reads inside the neat line, with its position.
 
     Tesseract can run for hours on a tile of dense stipple (dune hatching), so
@@ -227,7 +227,7 @@ def ocr_words(sheet: Sheet, rgb: np.ndarray, scale: float = 3.0, tile: int = 900
     # Two tile grids offset by half a tile: a label cut by one grid's edge is whole in the other.
     starts = [(ty, tx) for ty in range(yn, ys, tile - overlap) for tx in range(xw, xe, tile - overlap)]
     half = tile // 2
-    starts += [(ty, tx) for ty in range(yn + half, ys, tile - overlap) for tx in range(xw + half, xe, tile - overlap)]
+    starts += [] if not two_grids else [(ty, tx) for ty in range(yn + half, ys, tile - overlap) for tx in range(xw + half, xe, tile - overlap)]
     for ty, tx in starts:
         t = clean[ty:min(ty + tile, ys), tx:min(tx + tile, xe)]
         t = cv2.resize(t, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)

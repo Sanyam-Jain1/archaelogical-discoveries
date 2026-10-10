@@ -131,7 +131,8 @@ def cmd_soi_index(args, cfg):
     out.mkdir(parents=True, exist_ok=True)
     with ProcessPoolExecutor(max_workers=args.workers) as pool:
         results = []
-        for r in pool.map(_index_one, files, [args.no_ocr] * len(files), [out / "sheets"] * len(files)):
+        fast = [args.fast] * len(files)
+        for r in pool.map(_index_one, files, [args.no_ocr] * len(files), [out / "sheets"] * len(files), fast):
             print(f"{r[0]}: {'skipped' if r[3] else f'{len(r[2])} words'}", flush=True)
             results.append(r)
     sheets, words = [], []
@@ -151,7 +152,7 @@ def cmd_soi_index(args, cfg):
     print(f"{len(sheets)} sheets georeferenced, {len(words)} words read, {len(terms)} mound terms -> {out}")
 
 
-def _index_one(path: Path, no_ocr: bool, cache: Path):
+def _index_one(path: Path, no_ocr: bool, cache: Path, fast: bool = False):
     import json as _json
 
     from . import soi
@@ -164,7 +165,8 @@ def _index_one(path: Path, no_ocr: bool, cache: Path):
             return name, sheet, [], None
         if done.exists():
             return name, sheet, _json.loads(done.read_text()), None
-        words = soi.ocr_words(sheet, rgb)
+        # fast: about 4x quicker; one tile grid with a wider overlap, less upscaling
+        words = soi.ocr_words(sheet, rgb, scale=2.5, overlap=300, two_grids=False) if fast else soi.ocr_words(sheet, rgb)
         cache.mkdir(parents=True, exist_ok=True)
         tmp = done.with_suffix(".tmp")
         tmp.write_text(_json.dumps(words))
@@ -300,6 +302,7 @@ def main(argv=None):
     si.add_argument("--out", default="runs/soi")
     si.add_argument("--workers", type=int, default=3)
     si.add_argument("--no-ocr", action="store_true")
+    si.add_argument("--fast", action="store_true", help="quicker, slightly less thorough OCR")
     si.set_defaults(func=cmd_soi_index)
 
     sc = sub.add_parser("soi-chips", help="old-map crops and historical mound labels for a run's shortlist")
