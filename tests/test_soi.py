@@ -47,7 +47,7 @@ def test_find_frame_on_synthetic_sheet():
 
 
 def test_mound_terms():
-    for t in ["Theh", "Sanwat Khera", "Dheri", "Ruins", "Old Site", "Kheri"]:
+    for t in ["Theh", "Theri Ganga", "Sanwat Khera", "Dheri", "Ruins", "Old Site", "Kheri"]:
         assert MOUND_TERMS.search(t), t
     for t in ["Kalanwali", "Hissar", "Thermal"]:
         assert not MOUND_TERMS.search(t), t

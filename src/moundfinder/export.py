@@ -11,7 +11,7 @@ import numpy as np
 import rasterio
 from rasterio.windows import from_bounds
 
-from .geo import metres_per_degree
+from .geo import haversine_m, metres_per_degree
 
 CSV_FIELDS = [
     "id", "score", "lat", "lon", "summit_lat", "summit_lon", "peak_relief_m", "area_ha", "elongation",
@@ -28,9 +28,21 @@ def satellite_link(lat: float, lon: float) -> str:
     return f"https://www.google.com/maps/@{lat:.6f},{lon:.6f},700m/data=!3m1!1e3"
 
 
-def shortlist(cands: list[dict], top: int, include_known: bool = False) -> list[dict]:
-    pool = [c for c in cands if include_known or not c.get("known_site")]
-    return sorted(pool, key=lambda c: -c["score"])[:top]
+def shortlist(cands: list[dict], top: int, include_known: bool = False, min_sep_m: float = 300) -> list[dict]:
+    """The `top` best candidates, skipping any within `min_sep_m` of a better one.
+
+    The surface classifier and the DEM can each outline the same mound as a
+    separate candidate a hundred metres apart; it should be reviewed once.
+    """
+    pool = sorted((c for c in cands if include_known or not c.get("known_site")), key=lambda c: -c["score"])
+    out = []
+    for c in pool:
+        if any(haversine_m(c["lat"], c["lon"], o["lat"], o["lon"]) < min_sep_m for o in out):
+            continue
+        out.append(c)
+        if len(out) == top:
+            break
+    return out
 
 
 def write_csv(cands: list[dict], path: Path) -> None:

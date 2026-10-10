@@ -206,6 +206,15 @@ def cmd_soi_leads(args, cfg):
           f"-> {index / 'leads.csv'}")
 
 
+def _edge_m(sheet, c) -> float:
+    """Distance in metres from a candidate to the nearest edge of a sheet's frame."""
+    from .geo import metres_per_degree
+
+    w, s, e, n = sheet.bounds
+    m_lon, m_lat = metres_per_degree(c["lat"])
+    return min((c["lon"] - w) * m_lon, (e - c["lon"]) * m_lon, (c["lat"] - s) * m_lat, (n - c["lat"]) * m_lat)
+
+
 def cmd_soi_chips(args, cfg):
     """Crop the old maps around shortlisted candidates and note nearby historical mound labels."""
     import math as _math
@@ -224,8 +233,9 @@ def cmd_soi_chips(args, cfg):
     short = export.shortlist(cands, args.top, args.include_known)
     by_sheet = {}
     for c in short:
-        # Earliest sheet covering the candidate.
-        cover = sorted((s for s in sheets if s.contains(c["lon"], c["lat"])), key=lambda s: s.year or 9999)
+        # Earliest sheet with the candidate well inside its frame, so the crop isn't mostly margin.
+        cover = sorted((s for s in sheets if s.contains(c["lon"], c["lat"])),
+                       key=lambda s: (_edge_m(s, c) < args.half_m, s.year or 9999))
         c["soi_sheet"] = cover[0].name if cover else None
         c["soi_year"] = cover[0].year if cover else None
         if cover:

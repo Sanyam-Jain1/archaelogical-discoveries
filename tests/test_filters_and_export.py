@@ -87,3 +87,16 @@ def test_green_clump_penalised_and_bare_patch_not():
     mound = dict(base, dry_ndvi_in=0.14, dry_ndvi_ring=0.23, dry_bright_in=0.20, dry_bright_ring=0.15)
     assert "green_clump" in penalties(grove)[1] and penalties(grove)[0] < 1
     assert penalties(mound) == (1.0, [])
+
+
+def test_shortlist_skips_a_second_outline_of_the_same_mound():
+    from moundfinder.export import shortlist
+
+    cands = [
+        {"id": "a", "lat": 29.0, "lon": 74.0, "score": 0.9, "known_site": ""},
+        {"id": "b", "lat": 29.0012, "lon": 74.0, "score": 0.8, "known_site": ""},  # ~130 m from a
+        {"id": "c", "lat": 29.1, "lon": 74.0, "score": 0.7, "known_site": ""},
+        {"id": "d", "lat": 29.2, "lon": 74.0, "score": 0.95, "known_site": "Somewhere"},
+    ]
+    assert [c["id"] for c in shortlist(cands, 2)] == ["a", "c"]
+    assert [c["id"] for c in shortlist(cands, 5, include_known=True)] == ["d", "a", "c"]

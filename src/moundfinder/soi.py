@@ -31,7 +31,7 @@ import numpy as np
 log = logging.getLogger("moundfinder")
 
 BLOCKS = {"44": (72.0, 28.0)}  # block -> (west longitude, south latitude); 4 x 4 degrees
-MOUND_TERMS = re.compile(r"\b(theh|thehr?i|khera|kheri|kheda|dheri|dhera|ruins?|mound|old\s*site|kot)\b", re.I)
+MOUND_TERMS = re.compile(r"\b(theh|thehr?i|theri|khera|kheri|kheda|dheri|dhera|ruins?|mound|old\s*site|kot)\b", re.I)
 
 
 def sheet_bounds(block: str, letter: str, number: int) -> tuple[float, float, float, float]:
@@ -281,11 +281,11 @@ def load_index(path: Path) -> list[Sheet]:
 
 
 # What a label says about the ground:
-#   mound - "theh", "dheri", "mound", "old site": a mound was drawn or named there;
+#   mound - "theh", "theri", "dheri", "mound", "old site": a mound was drawn or named there;
 #   ruins - "(In ruins)" beside a hamlet symbol: a settlement already deserted when
 #           surveyed. Some stand on old mounds, most are recent;
 #   name  - "khera", "kot" in a village name: a village on or by its old mound.
-MOUND_LABEL = re.compile(r"\b(theh|thehr?i|dheri|mound|old\s*site)\b", re.I)
+MOUND_LABEL = re.compile(r"\b(theh|thehr?i|theri|dheri|mound|old\s*site)\b", re.I)
 RUINS_LABEL = re.compile(r"\bru[il]n?s?\b|\bruias\b", re.I)
 
 
