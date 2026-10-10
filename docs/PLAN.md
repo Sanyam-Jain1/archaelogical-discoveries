@@ -148,6 +148,26 @@ What this means:
 
   Sorting these needs the high-resolution satellite view linked from each card. That is Phase 5.
 
+## Visual check at 1 m (2026-10-10)
+
+`scripts/fetch_hires.py` crops Esri World Imagery (~1 m) around each candidate. Recorded mounds in farmland look alike at that scale: Banawali, Kalibangan and Baror are rounded, unploughed islands with a grey, gullied surface, and fields stop at their edge. Looking at the top 100 against that picture:
+
+| What it is | Count |
+|---|---|
+| Modern village, farmstead or town | ~30 |
+| Fields, nothing visible | ~20 |
+| Canal bank, road or rail embankment | ~17 |
+| Dunes, scrub or tree belts | ~13 |
+| Brick kiln, factory or construction | ~9 |
+| **Mound-like** (ranks 1, 4, 7, 8, 13) | **5** |
+| Possible, needs a closer look | 9 |
+| Round village on a raised footprint (ranks 46, 95) | 2 |
+
+So the detectors find real mound-like features, but at about 1 in 20; the rest are things a 1 m image rules out at a glance. The labels are in `runs/<run>/labels_visual.csv`. Two caveats:
+
+- **All five mound-like candidates are in the well-surveyed Ghaggar valley** (Hanumangarh tehsil, Rania and Fatehabad in Haryana, one near Vijaynagar). Published lists there are fuller than ours, so they may already be recorded. Checking means the Hanumangarh survey's full 574-site list and the Haryana state gazetteer, or simply asking in the village.
+- **None of the top 100 is in the southern dune tracts**, where survey is thinnest. The ranking still favours open farmland.
+
 ## Pixel classifier
 
 `spectral-train` builds two-season (Jan–Feb crop peak, Apr–May dry) Sentinel-2 composites for each 100 km tile at 20 m, from 4 scenes per season, cached in `cache/s2_composites/`. It puts 27 per-pixel features on the DEM grid: bands, NDVI, a bare-soil index, brightness, their contrast with a ~330 m neighbourhood, and DEM relief. A random forest learns recorded-site pixels (within 80 m of each point, excluding built-up ones) against background pixels at least 2 km from any recorded site.

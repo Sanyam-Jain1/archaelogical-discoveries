@@ -58,6 +58,7 @@ def card_data(run: Path, cands: list[dict]) -> list[dict]:
             "lat": round(lat, 5),
             "lon": round(lon, 5),
             "sat": satellite_link(lat, lon),
+            "hr": chip(run / "chips" / f"{c['id']}_hr.png", size=300),
             "s2": chip(run / "chips" / f"{c['id']}_s2.png"),
             "relief": chip(run / "chips" / f"{c['id']}_relief.png"),
             "oldmap": chip(run / "chips" / f"{c['id']}_soi.png", size=260),

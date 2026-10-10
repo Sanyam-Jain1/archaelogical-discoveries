@@ -170,6 +170,7 @@ function cardEl(c) {
   const imgs = document.createElement("div");
   imgs.className = "imgs";
   const panels = [[c.s2, "Sentinel-2, Apr–May"], [c.relief, "Height above surroundings, 0–6 m"]];
+  if (c.hr) panels.unshift([c.hr, "Satellite, ~1 m (Esri, Maxar), 600 m across"]);
   if (c.oldmap) panels.push([c.oldmap, `Survey of India map, ${c.oldyear || "old"} (2 km across)`]);
   for (const [src, cap] of panels) {
     const fig = document.createElement("figure");
